@@ -33,10 +33,12 @@ readExpr input =
 
 -- | Parses an expression. Returns the parsed `LispVal`.
 parseExpr :: Parser LispVal
-parseExpr = parseIdentifier <|> try parseNumber <|> try parseBoolean
-    <|> try parseCharacter <|> parseString
+parseExpr = parseIdentifier
+    -- Expressions started with `#`
+    <|> try parseNumber <|> try parseBoolean <|> parseCharacter
+    -- Expressions started with `unquote` (,)
     <|> try parseUnquoteSplicing <|> parseUnquote
-    <|> parseQuasiquote <|> parseQuoted <|> do
+    <|> parseString <|> parseQuasiquote <|> parseQuoted <|> do
         _ <- char '('
         x <- try parseList <|> parseDottedList
         _ <- char ')'
@@ -105,7 +107,7 @@ parseDottedList = do
 parseNumber :: Parser LispVal
 parseNumber =
     try parseReal <|> try parseRational <|> try parseComplex
-    <|> try parseDecimal <|> try parseBin <|> try parseOct <|> try parseHex
+    <|> try parseBin <|> try parseOct <|> try parseHex <|> parseDecimal
 
 -- | Parses a floating point constant. Returns the parsed `Real`.
 parseReal :: Parser LispVal
@@ -121,6 +123,9 @@ parseReal = do
             _         -> error $ "parseReal: no match for " ++ n
 
 -- | Parses an rational number constant. Returns the parsed `Rational`.
+--
+--   For `a/b`, only integers are supported for `a` and `b` to ease
+--   implementation.
 parseRational :: Parser LispVal
 parseRational = do
     n <- many1 digit
@@ -129,6 +134,9 @@ parseRational = do
     return $ Rational $ read n % read d
 
 -- | Parses an complex number constant. Returns the parsed `Complex`.
+--
+--   For `a+bi`, only integers are supported for `a` and `b` to ease
+--   implementation.
 parseComplex :: Parser LispVal
 parseComplex = do
     n <- many1 digit
@@ -195,6 +203,9 @@ parseString = do
     _ <- char '"'
     return $ String x
 
+-- | Parses a quoted character (\\, \", \n, \r, \t).
+--
+--   Returns the parsed character.
 parseQuotedCharacter :: Parser Char
 parseQuotedCharacter = do
     _  <- char '\\'
