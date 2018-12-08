@@ -5,7 +5,7 @@ module Expr
     ) where
 
 import Data.Char (digitToInt)
-import Numeric (readFloat, readInt, readHex, readOct)
+import Numeric (readFloat, readHex, readInt, readOct)
 
 import Text.ParserCombinators.Parsec
 
@@ -41,12 +41,13 @@ parseExpr = parseIdentifier
 -- | Parses a boolean. Returns the parsed `Boolean`.
 parseBoolean :: Parser LispVal
 parseBoolean = do
-    v <- try (string "#t") <|> string "#f"
+    _ <- char '#'
+    v <- char 't' <|> char 'f'
 
     return $
         case v of
-            "#t" -> Boolean True
-            _    -> Boolean False
+            't' -> Boolean True
+            _   -> Boolean False
 
 -- | Parses an identifier. Returns the parsed `Identifier`.
 parseIdentifier :: Parser LispVal
@@ -152,7 +153,7 @@ parseString = do
 parseQuotedCharacter :: Parser Char
 parseQuotedCharacter = do
     _  <- char '\\'
-    qc <- char '\\' <|> char '"' <|> char 'n' <|> char 'r' <|> char 't'
+    qc <- oneOf "\\\"nrt"
     return $
         case qc of
             'n' -> '\n'
