@@ -5,13 +5,14 @@ module Expr
     ) where
 
 import Data.Char (digitToInt)
-import Numeric (readInt, readHex, readOct)
+import Numeric (readFloat, readInt, readHex, readOct)
 
 import Text.ParserCombinators.Parsec
 
 data LispVal
     = Identifier String
     | Number Integer
+    | Float Float
     | Character Char
     | String String
     | Boolean Bool
@@ -28,8 +29,10 @@ readExpr input =
 
 -- | Parses an expression. Returns the parsed `LispVal`.
 parseExpr :: Parser LispVal
-parseExpr = parseIdentifier <|> parseNumber <|> parseString
-    <|> try parseCharacter <|> parseBoolean <|> parseQuoted <|> do
+parseExpr = parseIdentifier
+    <|> try parseFloat <|> try parseNumber <|> try parseBoolean
+    <|> try parseCharacter <|> parseString
+    <|> parseQuoted <|> do
         _ <- char '('
         x <- try parseList <|> parseDottedList
         _ <- char ')'
@@ -74,6 +77,19 @@ parseDottedList = do
 parseNumber :: Parser LispVal
 parseNumber =
     try parseDecimal <|> try parseBin <|> try parseOct <|> try parseHex
+
+-- | Parses a floating point constant. Returns the parsed `Float`.
+parseFloat :: Parser LispVal
+parseFloat = do
+    i <- many1 digit
+    _ <- char '.'
+    d <- many1 digit
+
+    let n = concat [i, ".", d]
+    return $
+        case readFloat n of
+            [(v, "")] -> Float v
+            _         -> error $ "parseFloat: no match for " ++ n
 
 -- | Parses a decimal numberical constant. Returns the parsed `Number`.
 parseDecimal :: Parser LispVal
