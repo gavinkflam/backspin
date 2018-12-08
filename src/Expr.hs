@@ -4,6 +4,7 @@ module Expr
       readExpr
     ) where
 
+import Data.Array (Array, listArray)
 import Data.Char (digitToInt)
 import Data.Complex (Complex(..))
 import Data.Ratio ((%))
@@ -22,6 +23,7 @@ data LispVal
     | Boolean Bool
     | List [LispVal]
     | DottedList [LispVal] LispVal
+    | Vector (Array Int LispVal)
     deriving (Eq, Show)
 
 -- | Read an expression. Returns the parsed `LispVal`.
@@ -35,7 +37,8 @@ readExpr input =
 parseExpr :: Parser LispVal
 parseExpr = parseIdentifier
     -- Expressions started with `#`
-    <|> try parseNumber <|> try parseBoolean <|> parseCharacter
+    <|> try parseNumber <|> try parseBoolean <|> try parseCharacter
+    <|> parseVector
     -- Expressions started with `unquote` (,)
     <|> try parseUnquoteSplicing <|> parseUnquote
     <|> parseString <|> parseQuasiquote <|> parseQuoted <|> do
@@ -68,6 +71,14 @@ parseQuoted = do
     _ <- char '\''
     x <- parseExpr
     return $ List [Identifier "quote", x]
+
+-- | Parses a vector. Returns the parsed `Vector`.
+parseVector :: Parser LispVal
+parseVector = do
+    _  <- string "#("
+    xs <- sepBy parseExpr spaces1
+    _  <- char ')'
+    return $ Vector $ listArray (0, length xs - 1) xs
 
 -- | Parses a quasiquote expression. Returns the parsed `List`.
 parseQuasiquote :: Parser LispVal
