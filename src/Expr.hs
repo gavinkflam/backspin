@@ -11,6 +11,7 @@ import Text.ParserCombinators.Parsec
 data LispVal
     = Identifier String
     | Number Integer
+    | Character Char
     | String String
     | Boolean Bool
     | List [LispVal]
@@ -27,7 +28,7 @@ readExpr input =
 -- | Parses an expression. Returns the parsed `LispVal`.
 parseExpr :: Parser LispVal
 parseExpr = parseIdentifier <|> parseNumber <|> parseString
-    <|> parseBoolean <|> parseQuoted <|> do
+    <|> try parseCharacter <|> parseBoolean <|> parseQuoted <|> do
         _ <- char '('
         x <- try parseList <|> parseDottedList
         _ <- char ')'
@@ -97,6 +98,20 @@ parseHex = do
         case readHex n of
             [(v, "")] -> Number v
             _         -> error $ "parseHex: no match for " ++ n
+
+-- | Parses a character constant. Returns the parsed `Character`.
+--
+--   Only `#\space` is supported instead of `#\` to ease implementation.
+parseCharacter :: Parser LispVal
+parseCharacter = do
+    _ <- string "#\\"
+    s <- string "space" <|> string "newline" <|> count 1 (noneOf " ")
+    return $
+        case s of
+            "space"   -> Character ' '
+            "newline" -> Character '\n'
+            [c]       -> Character c
+            _         -> error $ "parseCharacter: no match for " ++ s
 
 -- | Parses a string constant. Returns the parsed `String`.
 parseString :: Parser LispVal
