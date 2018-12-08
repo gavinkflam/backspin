@@ -13,9 +13,9 @@ import Text.ParserCombinators.Parsec
 
 data LispVal
     = Identifier String
-    | Number Integer
-    | Float Float
+    | Integer Integer
     | Rational Rational
+    | Real Float
     | Complex (Complex Integer)
     | Character Char
     | String String
@@ -76,15 +76,17 @@ parseDottedList = do
     t <- char '.' >> spaces1 >> parseExpr
     return $ DottedList h t
 
--- | Parses a numberical constant. Returns the parsed `Number`.
+-- | Parses a numberical constant.
+--
+--   Returns the parsed `Integer`, `Rational`, `Real` or `Complex`.
 parseNumber :: Parser LispVal
 parseNumber =
-    try parseFloat <|> try parseRational <|> try parseComplex
+    try parseReal <|> try parseRational <|> try parseComplex
     <|> try parseDecimal <|> try parseBin <|> try parseOct <|> try parseHex
 
--- | Parses a floating point constant. Returns the parsed `Float`.
-parseFloat :: Parser LispVal
-parseFloat = do
+-- | Parses a floating point constant. Returns the parsed `Real`.
+parseReal :: Parser LispVal
+parseReal = do
     i <- many1 digit
     _ <- char '.'
     d <- many1 digit
@@ -92,8 +94,8 @@ parseFloat = do
     let n = concat [i, ".", d]
     return $
         case readFloat n of
-            [(v, "")] -> Float v
-            _         -> error $ "parseFloat: no match for " ++ n
+            [(v, "")] -> Real v
+            _         -> error $ "parseReal: no match for " ++ n
 
 -- | Parses an rational number constant. Returns the parsed `Rational`.
 parseRational :: Parser LispVal
@@ -112,40 +114,40 @@ parseComplex = do
     _ <- char 'i'
     return $ Complex $ read n :+ read d
 
--- | Parses a decimal numberical constant. Returns the parsed `Number`.
+-- | Parses a decimal numberical constant. Returns the parsed `Integer`.
 parseDecimal :: Parser LispVal
 parseDecimal = do
     _ <- optional $ string "#d"
-    Number . read <$> many1 digit
+    Integer . read <$> many1 digit
 
--- | Parses an binary numberical constant. Returns the parsed `Number`.
+-- | Parses an binary numberical constant. Returns the parsed `Integer`.
 parseBin :: Parser LispVal
 parseBin = do
     _ <- string "#b"
     n <- many1 $ oneOf "01"
     return $
         case readBin n of
-            [(v, "")] -> Number v
+            [(v, "")] -> Integer v
             _         -> error $ "parseBin: no match for " ++ n
 
--- | Parses an octal numberical constant. Returns the parsed `Number`.
+-- | Parses an octal numberical constant. Returns the parsed `Integer`.
 parseOct :: Parser LispVal
 parseOct = do
     _ <- string "#o"
     n <- many1 octDigit
     return $
         case readOct n of
-            [(v, "")] -> Number v
+            [(v, "")] -> Integer v
             _         -> error $ "parseOct: no match for " ++ n
 
--- | Parses a hexadecimal numberics constant. Returns the parsed `Number`.
+-- | Parses a hexadecimal numberics constant. Returns the parsed `Integer`.
 parseHex :: Parser LispVal
 parseHex = do
     _ <- string "#x"
     n <- many1 hexDigit
     return $
         case readHex n of
-            [(v, "")] -> Number v
+            [(v, "")] -> Integer v
             _         -> error $ "parseHex: no match for " ++ n
 
 -- | Parses a character constant. Returns the parsed `Character`.
