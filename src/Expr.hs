@@ -5,6 +5,7 @@ module Expr
     ) where
 
 import Data.Char (digitToInt)
+import Data.Complex (Complex(..))
 import Data.Ratio ((%))
 import Numeric (readFloat, readHex, readInt, readOct)
 
@@ -15,6 +16,7 @@ data LispVal
     | Number Integer
     | Float Float
     | Rational Rational
+    | Complex (Complex Integer)
     | Character Char
     | String String
     | Boolean Bool
@@ -77,7 +79,7 @@ parseDottedList = do
 -- | Parses a numberical constant. Returns the parsed `Number`.
 parseNumber :: Parser LispVal
 parseNumber =
-    try parseFloat <|> try parseRational
+    try parseFloat <|> try parseRational <|> try parseComplex
     <|> try parseDecimal <|> try parseBin <|> try parseOct <|> try parseHex
 
 -- | Parses a floating point constant. Returns the parsed `Float`.
@@ -100,6 +102,15 @@ parseRational = do
     _ <- char '/'
     d <- many1 digit
     return $ Rational $ read n % read d
+
+-- | Parses an complex number constant. Returns the parsed `Complex`.
+parseComplex :: Parser LispVal
+parseComplex = do
+    n <- many1 digit
+    _ <- char '+'
+    d <- many1 digit
+    _ <- char 'i'
+    return $ Complex $ read n :+ read d
 
 -- | Parses a decimal numberical constant. Returns the parsed `Number`.
 parseDecimal :: Parser LispVal
