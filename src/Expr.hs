@@ -41,11 +41,8 @@ parseExpr = parseIdentifier
     <|> parseVector
     -- Expressions started with `unquote` (,)
     <|> try parseUnquoteSplicing <|> parseUnquote
-    <|> parseString <|> parseQuasiquote <|> parseQuoted <|> do
-        _ <- char '('
-        x <- try parseList <|> parseDottedList
-        _ <- char ')'
-        return x
+    <|> parseString <|> parseQuasiquote <|> parseQuoted
+    <|> try parseList <|> parseDottedList
 
 -- | Parses a boolean. Returns the parsed `Boolean`.
 parseBoolean :: Parser LispVal
@@ -103,14 +100,20 @@ parseUnquoteSplicing = do
 
 -- | Parses a list. Returns the parsed `List`.
 parseList :: Parser LispVal
-parseList = List <$> sepBy parseExpr spaces1
+parseList = do
+    _  <- char '('
+    xs <- sepBy parseExpr spaces1
+    _  <- char ')'
+    return $ List xs
 
 -- | Parses a dotted list. Returns the parsed `DottedList`.
 parseDottedList :: Parser LispVal
 parseDottedList = do
-    h <- endBy parseExpr spaces1
-    t <- char '.' >> spaces1 >> parseExpr
-    return $ DottedList h t
+    _  <- char '('
+    xs <- endBy parseExpr spaces1
+    t  <- char '.' >> spaces1 >> parseExpr
+    _  <- char ')'
+    return $ DottedList xs t
 
 -- | Parses a numberical constant.
 --
