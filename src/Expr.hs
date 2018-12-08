@@ -34,7 +34,9 @@ readExpr input =
 -- | Parses an expression. Returns the parsed `LispVal`.
 parseExpr :: Parser LispVal
 parseExpr = parseIdentifier <|> try parseNumber <|> try parseBoolean
-    <|> try parseCharacter <|> parseString <|> parseQuoted <|> do
+    <|> try parseCharacter <|> parseString
+    <|> try parseUnquoteSplicing <|> parseUnquote
+    <|> parseQuasiquote <|> parseQuoted <|> do
         _ <- char '('
         x <- try parseList <|> parseDottedList
         _ <- char ')'
@@ -64,6 +66,27 @@ parseQuoted = do
     _ <- char '\''
     x <- parseExpr
     return $ List [Identifier "quote", x]
+
+-- | Parses a quasiquote expression. Returns the parsed `List`.
+parseQuasiquote :: Parser LispVal
+parseQuasiquote = do
+    _ <- char '`'
+    x <- parseExpr
+    return $ List [Identifier "quasiquote", x]
+
+-- | Parses an unquote expression. Returns the parsed `List`.
+parseUnquote :: Parser LispVal
+parseUnquote = do
+    _ <- char ','
+    x <- parseExpr
+    return $ List [Identifier "unquote", x]
+
+-- | Parses an unquote-splicing expression. Returns the parsed `List`.
+parseUnquoteSplicing :: Parser LispVal
+parseUnquoteSplicing = do
+    _ <- string ",@"
+    x <- parseExpr
+    return $ List [Identifier "unquote-splicing", x]
 
 -- | Parses a list. Returns the parsed `List`.
 parseList :: Parser LispVal
