@@ -4,7 +4,8 @@ module Expr
       readExpr
     ) where
 
-import Numeric (readHex, readOct)
+import Data.Char (digitToInt)
+import Numeric (readInt, readHex, readOct)
 
 import Text.ParserCombinators.Parsec
 
@@ -71,13 +72,24 @@ parseDottedList = do
 
 -- | Parses a numberical constant. Returns the parsed `Number`.
 parseNumber :: Parser LispVal
-parseNumber = try parseDecimal <|> try parseOct <|> try parseHex
+parseNumber =
+    try parseDecimal <|> try parseBin <|> try parseOct <|> try parseHex
 
 -- | Parses a decimal numberical constant. Returns the parsed `Number`.
 parseDecimal :: Parser LispVal
 parseDecimal = do
     _ <- optional $ string "#d"
     Number . read <$> many1 digit
+
+-- | Parses an binary numberical constant. Returns the parsed `Number`.
+parseBin :: Parser LispVal
+parseBin = do
+    _ <- string "#b"
+    n <- many1 $ oneOf "01"
+    return $
+        case readBin n of
+            [(v, "")] -> Number v
+            _         -> error $ "parseBin: no match for " ++ n
 
 -- | Parses an octal numberical constant. Returns the parsed `Number`.
 parseOct :: Parser LispVal
@@ -143,3 +155,7 @@ spaces1 = skipMany1 space
 --   Returns the parsed character.
 extendedAlphabet :: Parser Char
 extendedAlphabet = oneOf "!$%&*+-/:<=>?@^_~"
+
+-- | Read an unsigned number in binary notation.
+readBin :: (Eq a, Num a) => ReadS a
+readBin = readInt 2 (`elem` "01") digitToInt
