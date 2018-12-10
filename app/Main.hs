@@ -2,7 +2,7 @@ module Main where
 
 import System.Environment (getArgs)
 
-import Expr (readExpr)
+import Parser (readExpr)
 
 main :: IO ()
 main = do

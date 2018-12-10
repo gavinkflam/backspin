@@ -1,10 +1,10 @@
-module Expr
+module Parser
     (
       -- * Expression
       readExpr
     ) where
 
-import Data.Array (Array, listArray)
+import Data.Array (listArray)
 import Data.Char (digitToInt)
 import Data.Complex (Complex(..))
 import Data.Ratio ((%))
@@ -12,19 +12,7 @@ import Numeric (readFloat, readHex, readInt, readOct)
 
 import Text.ParserCombinators.Parsec
 
-data LispVal
-    = Identifier String
-    | Integer Integer
-    | Rational Rational
-    | Real Float
-    | Complex (Complex Integer)
-    | Character Char
-    | String String
-    | Boolean Bool
-    | List [LispVal]
-    | DottedList [LispVal] LispVal
-    | Vector (Array Int LispVal)
-    deriving (Eq, Show)
+import LispVal (LispVal(..))
 
 -- | Read an expression. Returns the parsed `LispVal`.
 readExpr :: String -> String
