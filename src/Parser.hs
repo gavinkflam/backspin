@@ -15,11 +15,11 @@ import Text.ParserCombinators.Parsec
 import LispVal (LispVal(..))
 
 -- | Read an expression. Returns the parsed `LispVal`.
-readExpr :: String -> String
+readExpr :: String -> LispVal
 readExpr input =
     case parse parseExpr "lisp" input of
-        Left err   -> "No match: " ++ show err
-        Right expr -> show expr
+        Left err   -> String $ "No match: " ++ show err
+        Right expr -> expr
 
 -- | Parses an expression. Returns the parsed `LispVal`.
 parseExpr :: Parser LispVal
