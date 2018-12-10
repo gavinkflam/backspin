@@ -41,8 +41,7 @@ parseExpr = parseIdentifier
     <|> parseVector
     -- Expressions started with `unquote` (,)
     <|> try parseUnquoteSplicing <|> parseUnquote
-    <|> parseString <|> parseQuasiquote <|> parseQuoted
-    <|> try parseList <|> parseDottedList
+    <|> parseString <|> parseQuasiquote <|> parseQuoted <|> parseList
 
 -- | Parses a boolean. Returns the parsed `Boolean`.
 parseBoolean :: Parser LispVal
@@ -98,21 +97,25 @@ parseUnquoteSplicing = do
     x <- parseExpr
     return $ List [Identifier "unquote-splicing", x]
 
--- | Parses a list. Returns the parsed `List`.
+-- | Parses a list. Returns the parsed `List` or `DottedList`.
 parseList :: Parser LispVal
 parseList = do
-    _  <- char '('
-    xs <- sepBy parseExpr spaces1
-    _  <- char ')'
+    _  <- char '(' >> spaces
+    xs <- parseExpr `sepEndBy` spaces1
+    parseDottedListTail xs <|> parseListEnd xs
+
+-- | Parses the end of a list. Returns the parsed `List`.
+parseListEnd :: [LispVal] -> Parser LispVal
+parseListEnd xs = do
+    _  <- spaces >> char ')'
     return $ List xs
 
--- | Parses a dotted list. Returns the parsed `DottedList`.
-parseDottedList :: Parser LispVal
-parseDottedList = do
-    _  <- char '('
-    xs <- endBy parseExpr spaces1
-    t  <- char '.' >> spaces1 >> parseExpr
-    _  <- char ')'
+-- | Parses the tail of a dotted list. Returns the parsed `DottedList`.
+parseDottedListTail :: [LispVal] -> Parser LispVal
+parseDottedListTail xs = do
+    _  <- char '.' >> spaces1
+    t  <- parseExpr
+    _  <- spaces >> char ')'
     return $ DottedList xs t
 
 -- | Parses a numberical constant.
