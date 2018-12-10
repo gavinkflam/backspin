@@ -9,7 +9,7 @@ import Data.Complex (Complex(..), imagPart, realPart)
 import Data.Ratio (numerator, denominator)
 
 data LispVal
-    = Identifier String
+    = Symbol String
     | Integer Integer
     | Rational Rational
     | Real Float
@@ -27,7 +27,7 @@ instance Show LispVal where
 
 -- | Show the s-expression for LispVal.
 showVal :: LispVal -> String
-showVal (Identifier x)    = x
+showVal (Symbol x)        = x
 showVal (Integer x)       = show x
 showVal (Rational x)      = show (numerator x) ++ "/" ++ show (denominator x)
 showVal (Real x)          = show x

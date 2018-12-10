@@ -17,8 +17,8 @@ eval x@(Complex _)   = x
 eval x@(Character _) = x
 eval x@(String _)    = x
 eval x@(Boolean _)   = x
-eval (List [Identifier "quote", x])   = x
-eval (List (Identifier fName : args)) = apply fName $ map eval args
+eval (List [Symbol "quote", x])   = x
+eval (List (Symbol fName : args)) = apply fName $ map eval args
 
 -- | Apply function by name and arguments.
 apply :: String -> [LispVal] -> LispVal

@@ -23,7 +23,7 @@ readExpr input =
 
 -- | Parses an expression. Returns the parsed `LispVal`.
 parseExpr :: Parser LispVal
-parseExpr = parseIdentifier
+parseExpr = parseSymbol
     -- Expressions started with `#`
     <|> try parseNumber <|> try parseBoolean <|> try parseCharacter
     <|> parseVector
@@ -42,19 +42,19 @@ parseBoolean = do
             't' -> Boolean True
             _   -> Boolean False
 
--- | Parses an identifier. Returns the parsed `Identifier`.
-parseIdentifier :: Parser LispVal
-parseIdentifier = do
+-- | Parses an symbol. Returns the parsed `Symbol`.
+parseSymbol :: Parser LispVal
+parseSymbol = do
     first <- letter <|> extendedAlphabet
     rest  <- many $ letter <|> digit <|> extendedAlphabet
-    return $ Identifier $ first:rest
+    return $ Symbol $ first:rest
 
 -- | Parses a literal expression. Returns the parsed `List`.
 parseQuoted :: Parser LispVal
 parseQuoted = do
     _ <- char '\''
     x <- parseExpr
-    return $ List [Identifier "quote", x]
+    return $ List [Symbol "quote", x]
 
 -- | Parses a vector. Returns the parsed `Vector`.
 parseVector :: Parser LispVal
@@ -69,21 +69,21 @@ parseQuasiquote :: Parser LispVal
 parseQuasiquote = do
     _ <- char '`'
     x <- parseExpr
-    return $ List [Identifier "quasiquote", x]
+    return $ List [Symbol "quasiquote", x]
 
 -- | Parses an unquote expression. Returns the parsed `List`.
 parseUnquote :: Parser LispVal
 parseUnquote = do
     _ <- char ','
     x <- parseExpr
-    return $ List [Identifier "unquote", x]
+    return $ List [Symbol "unquote", x]
 
 -- | Parses an unquote-splicing expression. Returns the parsed `List`.
 parseUnquoteSplicing :: Parser LispVal
 parseUnquoteSplicing = do
     _ <- string ",@"
     x <- parseExpr
-    return $ List [Identifier "unquote-splicing", x]
+    return $ List [Symbol "unquote-splicing", x]
 
 -- | Parses a list. Returns the parsed `List` or `DottedList`.
 parseList :: Parser LispVal
