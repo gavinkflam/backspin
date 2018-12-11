@@ -36,93 +36,87 @@ primitives =
     , ("quotient",   numericBinop quot)
     , ("remainder",  numericBinop rem)
     -- Type checking predicates
-    , ("symbol?",    typeSymbolPredicate)
-    , ("integer?",   typeIntegerPredicate)
-    , ("rational?",  typeRationalPredicate)
-    , ("real?",      typeRealPredicate)
-    , ("complex?",   typeComplexPredicate)
-    , ("number?",    typeNumberPredicate)
-    , ("character?", typeCharacterPredicate)
-    , ("string?",    typeStringPredicate)
-    , ("boolean?",   typeBooleanPredicate)
-    , ("list?",      typeListPredicate)
-    , ("pair?",      typePairPredicate)
+    , ("symbol?",    unaryOp "symbol?" symbolp)
+    , ("integer?",   unaryOp "integer?" integerp)
+    , ("rational?",  unaryOp "rational?" rationalp)
+    , ("real?",      unaryOp "real?" realp)
+    , ("complex?",   unaryOp "complex?" complexp)
+    , ("number?",    unaryOp "number?" numberp)
+    , ("character?", unaryOp "character?" characterp)
+    , ("string?",    unaryOp "string?" stringp)
+    , ("boolean?",   unaryOp "boolean?" booleanp)
+    , ("list?",      unaryOp "list?" listp)
+    , ("pair?",      unaryOp "pair?" pairp)
     ]
 
 -- | Construct a lisp function with a binary numberical operator.
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
 numericBinop op params = Integer $ foldl1 op $ map unpackNum params
 
+-- | Construct a lisp function with one argument.
+unaryOp :: String -> (LispVal -> LispVal) -> [LispVal] -> LispVal
+unaryOp _ f [v]   = f v
+unaryOp fName _ _ = error $ fName ++ ": wrong number of arguments"
+
 -- | Type testing function `symbol?`.
-typeSymbolPredicate :: [LispVal] -> LispVal
-typeSymbolPredicate [Symbol _] = Boolean True
-typeSymbolPredicate [_]        = Boolean False
-typeSymbolPredicate _          = error "symbol?: wrong number of arguments"
+symbolp :: LispVal -> LispVal
+symbolp (Symbol _) = Boolean True
+symbolp _          = Boolean False
 
 -- | Type testing function `integer?`.
-typeIntegerPredicate :: [LispVal] -> LispVal
-typeIntegerPredicate [Integer _] = Boolean True
-typeIntegerPredicate [_]         = Boolean False
-typeIntegerPredicate _           = error "integer?: wrong number of arguments"
+integerp :: LispVal -> LispVal
+integerp (Integer _) = Boolean True
+integerp _           = Boolean False
 
 -- | Type testing function `rational?`.
-typeRationalPredicate :: [LispVal] -> LispVal
-typeRationalPredicate [Integer _]  = Boolean True
-typeRationalPredicate [Rational _] = Boolean True
-typeRationalPredicate [_]          = Boolean False
-typeRationalPredicate _            = error "rational?: wrong number of arguments"
+rationalp :: LispVal -> LispVal
+rationalp (Integer _)  = Boolean True
+rationalp (Rational _) = Boolean True
+rationalp _            = Boolean False
 
 -- | Type testing function `real?`.
-typeRealPredicate :: [LispVal] -> LispVal
-typeRealPredicate [Integer _]  = Boolean True
-typeRealPredicate [Rational _] = Boolean True
-typeRealPredicate [Real _]     = Boolean True
-typeRealPredicate [_]          = Boolean False
-typeRealPredicate _            = error "real?: wrong number of arguments"
+realp :: LispVal -> LispVal
+realp (Integer _)  = Boolean True
+realp (Rational _) = Boolean True
+realp (Real _)     = Boolean True
+realp _            = Boolean False
 
 -- | Type testing function `complex?`.
-typeComplexPredicate :: [LispVal] -> LispVal
-typeComplexPredicate [Integer _]  = Boolean True
-typeComplexPredicate [Rational _] = Boolean True
-typeComplexPredicate [Real _]     = Boolean True
-typeComplexPredicate [Complex _]  = Boolean True
-typeComplexPredicate [_]          = Boolean False
-typeComplexPredicate _            = error "complex?: wrong number of arguments"
+complexp :: LispVal -> LispVal
+complexp (Integer _)  = Boolean True
+complexp (Rational _) = Boolean True
+complexp (Real _)     = Boolean True
+complexp (Complex _)  = Boolean True
+complexp _            = Boolean False
 
 -- | Type testing function `number?`.
-typeNumberPredicate :: [LispVal] -> LispVal
-typeNumberPredicate v@[_] = typeComplexPredicate v
-typeNumberPredicate _     = error "number?: wrong number of arguments"
+numberp :: LispVal -> LispVal
+numberp = complexp
 
 -- | Type testing function `character?`.
-typeCharacterPredicate :: [LispVal] -> LispVal
-typeCharacterPredicate [Character _] = Boolean True
-typeCharacterPredicate [_]           = Boolean False
-typeCharacterPredicate _             = error "character?: wrong number of arguments"
+characterp :: LispVal -> LispVal
+characterp (Character _) = Boolean True
+characterp _             = Boolean False
 
 -- | Type testing function `string?`.
-typeStringPredicate :: [LispVal] -> LispVal
-typeStringPredicate [String _] = Boolean True
-typeStringPredicate [_]        = Boolean False
-typeStringPredicate _          = error "string?: wrong number of arguments"
+stringp :: LispVal -> LispVal
+stringp (String _) = Boolean True
+stringp _          = Boolean False
 
 -- | Type testing function `boolean?`.
-typeBooleanPredicate :: [LispVal] -> LispVal
-typeBooleanPredicate [Boolean _] = Boolean True
-typeBooleanPredicate [_]         = Boolean False
-typeBooleanPredicate _           = error "boolean?: wrong number of arguments"
+booleanp :: LispVal -> LispVal
+booleanp (Boolean _) = Boolean True
+booleanp _           = Boolean False
 
 -- | Type testing function `list?`.
-typeListPredicate :: [LispVal] -> LispVal
-typeListPredicate [List _] = Boolean True
-typeListPredicate [_]      = Boolean False
-typeListPredicate _        = error "list?: wrong number of arguments"
+listp :: LispVal -> LispVal
+listp (List _) = Boolean True
+listp _        = Boolean False
 
 -- | Type testing function `pair?`.
-typePairPredicate :: [LispVal] -> LispVal
-typePairPredicate [DottedList _ _] = Boolean True
-typePairPredicate [_]              = Boolean False
-typePairPredicate _                = error "pair?: wrong number of arguments"
+pairp :: LispVal -> LispVal
+pairp (DottedList _ _) = Boolean True
+pairp _                = Boolean False
 
 -- | Unpack the integer value of the `LispVal`.
 --
