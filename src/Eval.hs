@@ -47,6 +47,9 @@ primitives =
     , ("boolean?",   unaryOp "boolean?" booleanp)
     , ("list?",      unaryOp "list?" listp)
     , ("pair?",      unaryOp "pair?" pairp)
+    -- Type converting functions
+    , ("symbol->string", unaryOp "symbol->string" symbolToString)
+    , ("string->symbol", unaryOp "string->symbol" stringToSymbol)
     ]
 
 -- | Construct a lisp function with a binary numberical operator.
@@ -117,6 +120,16 @@ listp _        = Boolean False
 pairp :: LispVal -> LispVal
 pairp (DottedList _ _) = Boolean True
 pairp _                = Boolean False
+
+-- | Convert a `Symbol` to `String`.
+symbolToString :: LispVal -> LispVal
+symbolToString (Symbol x) = String x
+symbolToString _          = error "symbol->string: not a symbol"
+
+-- | Convert a `String` to `Symbol`.
+stringToSymbol :: LispVal -> LispVal
+stringToSymbol (String x) = Symbol x
+stringToSymbol _          = error "string->symbol: not a string"
 
 -- | Unpack the integer value of the `LispVal`.
 --
