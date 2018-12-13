@@ -68,79 +68,83 @@ numericBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
 numericBinop _ op params   = Integer . foldl1 op <$> mapM unpackNum params
 
 -- | Construct a lisp function with one argument.
-unaryOp :: String -> (LispVal -> LispVal) -> [LispVal] -> ThrowsError LispVal
-unaryOp _ f [v]   = return $ f v
+unaryOp
+    :: String
+    -> (LispVal -> ThrowsError LispVal)
+    -> [LispVal]
+    -> ThrowsError LispVal
+unaryOp _ f [v]   = f v
 unaryOp fName _ v = throwError $ NumArgs fName 1 v
 
 -- | Type testing function `symbol?`.
-symbolp :: LispVal -> LispVal
-symbolp (Symbol _) = Boolean True
-symbolp _          = Boolean False
+symbolp :: LispVal -> ThrowsError LispVal
+symbolp (Symbol _) = return $ Boolean True
+symbolp _          = return $ Boolean False
 
 -- | Type testing function `integer?`.
-integerp :: LispVal -> LispVal
-integerp (Integer _) = Boolean True
-integerp _           = Boolean False
+integerp :: LispVal -> ThrowsError LispVal
+integerp (Integer _) = return $ Boolean True
+integerp _           = return $ Boolean False
 
 -- | Type testing function `rational?`.
-rationalp :: LispVal -> LispVal
-rationalp (Integer _)  = Boolean True
-rationalp (Rational _) = Boolean True
-rationalp _            = Boolean False
+rationalp :: LispVal -> ThrowsError LispVal
+rationalp (Integer _)  = return $ Boolean True
+rationalp (Rational _) = return $ Boolean True
+rationalp _            = return $ Boolean False
 
 -- | Type testing function `real?`.
-realp :: LispVal -> LispVal
-realp (Integer _)  = Boolean True
-realp (Rational _) = Boolean True
-realp (Real _)     = Boolean True
-realp _            = Boolean False
+realp :: LispVal -> ThrowsError LispVal
+realp (Integer _)  = return $ Boolean True
+realp (Rational _) = return $ Boolean True
+realp (Real _)     = return $ Boolean True
+realp _            = return $ Boolean False
 
 -- | Type testing function `complex?`.
-complexp :: LispVal -> LispVal
-complexp (Integer _)  = Boolean True
-complexp (Rational _) = Boolean True
-complexp (Real _)     = Boolean True
-complexp (Complex _)  = Boolean True
-complexp _            = Boolean False
+complexp :: LispVal -> ThrowsError LispVal
+complexp (Integer _)  = return $ Boolean True
+complexp (Rational _) = return $ Boolean True
+complexp (Real _)     = return $ Boolean True
+complexp (Complex _)  = return $ Boolean True
+complexp _            = return $ Boolean False
 
 -- | Type testing function `number?`.
-numberp :: LispVal -> LispVal
+numberp :: LispVal -> ThrowsError LispVal
 numberp = complexp
 
 -- | Type testing function `character?`.
-characterp :: LispVal -> LispVal
-characterp (Character _) = Boolean True
-characterp _             = Boolean False
+characterp :: LispVal -> ThrowsError LispVal
+characterp (Character _) = return $ Boolean True
+characterp _             = return $ Boolean False
 
 -- | Type testing function `string?`.
-stringp :: LispVal -> LispVal
-stringp (String _) = Boolean True
-stringp _          = Boolean False
+stringp :: LispVal -> ThrowsError LispVal
+stringp (String _) = return $ Boolean True
+stringp _          = return $ Boolean False
 
 -- | Type testing function `boolean?`.
-booleanp :: LispVal -> LispVal
-booleanp (Boolean _) = Boolean True
-booleanp _           = Boolean False
+booleanp :: LispVal -> ThrowsError LispVal
+booleanp (Boolean _) = return $ Boolean True
+booleanp _           = return $ Boolean False
 
 -- | Type testing function `list?`.
-listp :: LispVal -> LispVal
-listp (List _) = Boolean True
-listp _        = Boolean False
+listp :: LispVal -> ThrowsError LispVal
+listp (List _) = return $ Boolean True
+listp _        = return $ Boolean False
 
 -- | Type testing function `pair?`.
-pairp :: LispVal -> LispVal
-pairp (DottedList _ _) = Boolean True
-pairp _                = Boolean False
+pairp :: LispVal -> ThrowsError LispVal
+pairp (DottedList _ _) = return $ Boolean True
+pairp _                = return $ Boolean False
 
 -- | Convert a `Symbol` to `String`.
-symbolToString :: LispVal -> LispVal
-symbolToString (Symbol x) = String x
-symbolToString _          = error "symbol->string: not a symbol"
+symbolToString :: LispVal -> ThrowsError LispVal
+symbolToString (Symbol x) = return $ String x
+symbolToString v          = throwError $ TypeMismatch "symbol" v
 
 -- | Convert a `String` to `Symbol`.
-stringToSymbol :: LispVal -> LispVal
-stringToSymbol (String x) = Symbol x
-stringToSymbol _          = error "string->symbol: not a string"
+stringToSymbol :: LispVal -> ThrowsError LispVal
+stringToSymbol (String x) = return $ Symbol x
+stringToSymbol v          = throwError $ TypeMismatch "symbol" v
 
 -- | Unpack the integer value of the `LispVal`.
 --
