@@ -26,7 +26,7 @@ eval x               = throwError $ BadSpecialForm "Unrecognized special form" x
 apply :: String -> [LispVal] -> ThrowsError LispVal
 apply fName args =
     maybe
-    (throwError $ NotFunction "Unrecognized primitive function " fName)
+    (throwError $ NotFunction "Unrecognized primitive function" fName)
     ($ args) $ lookup fName primitives
 
 -- | Primitive functions for lisp.
