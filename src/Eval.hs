@@ -33,13 +33,13 @@ apply fName args =
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives =
     -- Numerical operators
-    [ ("+",          numericBinop (+))
-    , ("-",          numericBinop (-))
-    , ("*",          numericBinop (*))
-    , ("/",          numericBinop div)
-    , ("mod",        numericBinop mod)
-    , ("quotient",   numericBinop quot)
-    , ("remainder",  numericBinop rem)
+    [ ("+",          numericBinop "+" (+))
+    , ("-",          numericBinop "-" (-))
+    , ("*",          numericBinop "*" (*))
+    , ("/",          numericBinop "div" div)
+    , ("mod",        numericBinop "mod" mod)
+    , ("quotient",   numericBinop "quot" quot)
+    , ("remainder",  numericBinop "rem" rem)
     -- Type checking predicates
     , ("symbol?",    unaryOp "symbol?" symbolp)
     , ("integer?",   unaryOp "integer?" integerp)
@@ -59,15 +59,18 @@ primitives =
 
 -- | Construct a lisp function with a binary numberical operator.
 numericBinop
-    :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
-numericBinop _ []      = throwError $ NumArgs 2 []
-numericBinop _ v@[_]   = throwError $ NumArgs 2 v
-numericBinop op params = Integer . foldl1 op <$> mapM unpackNum params
+    :: String
+    -> (Integer -> Integer -> Integer)
+    -> [LispVal]
+    -> ThrowsError LispVal
+numericBinop fName _ []    = throwError $ NumArgs fName 2 []
+numericBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
+numericBinop _ op params   = Integer . foldl1 op <$> mapM unpackNum params
 
 -- | Construct a lisp function with one argument.
 unaryOp :: String -> (LispVal -> LispVal) -> [LispVal] -> ThrowsError LispVal
 unaryOp _ f [v]   = return $ f v
-unaryOp fName _ _ = error $ fName ++ ": wrong number of arguments"
+unaryOp fName _ v = throwError $ NumArgs fName 1 v
 
 -- | Type testing function `symbol?`.
 symbolp :: LispVal -> LispVal
