@@ -16,7 +16,7 @@ import LispVal (LispVal)
 -- | Errors for evaluating or parsing lisp.
 data LispError
     = NumArgs String Integer [LispVal]
-    | TypeMismatch String LispVal
+    | TypeMismatch String String LispVal
     | Parser ParseError
     | BadSpecialForm String LispVal
     | NotFunction String String
@@ -45,8 +45,8 @@ showError (NumArgs fName expected found) =
     fName ++ ": Expected " ++ show expected ++ " arguments, found values " ++ vs
   where
     vs = unwords $ map show found
-showError (TypeMismatch expected found) =
-    "Invalid type: expected " ++ expected ++ ", found " ++ show found
+showError (TypeMismatch fName expected found) =
+   fName ++ ": Invalid type: expected " ++ expected ++ ", found " ++ show found
 showError (Parser parseError) = "Parse error at " ++ show parseError
 showError (BadSpecialForm message form) = message ++ ": " ++ show form
 showError (NotFunction message fName)   = message ++ ": " ++ fName

@@ -65,7 +65,7 @@ numericBinop
     -> ThrowsError LispVal
 numericBinop fName _ []    = throwError $ NumArgs fName 2 []
 numericBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
-numericBinop _ op params   = Integer . foldl1 op <$> mapM unpackNum params
+numericBinop fName op pms  = Integer . foldl1 op <$> mapM (unpackNum fName) pms
 
 -- | Construct a lisp function with one argument.
 unaryOp
@@ -139,16 +139,18 @@ pairp _                = return $ Boolean False
 -- | Convert a `Symbol` to `String`.
 symbolToString :: LispVal -> ThrowsError LispVal
 symbolToString (Symbol x) = return $ String x
-symbolToString v          = throwError $ TypeMismatch "symbol" v
+symbolToString v =
+    throwError $ TypeMismatch "symbol->string" "symbol" v
 
 -- | Convert a `String` to `Symbol`.
 stringToSymbol :: LispVal -> ThrowsError LispVal
 stringToSymbol (String x) = return $ Symbol x
-stringToSymbol v          = throwError $ TypeMismatch "symbol" v
+stringToSymbol v =
+    throwError $ TypeMismatch "string->symbol" "symbol" v
 
 -- | Unpack the integer value of the `LispVal`.
 --
 --   Current only `Integer` is supported. All other values will evaluate to `0`.
-unpackNum :: LispVal -> ThrowsError Integer
-unpackNum (Integer n) = return n
-unpackNum v           = throwError $ TypeMismatch "number" v
+unpackNum :: String -> LispVal -> ThrowsError Integer
+unpackNum _ (Integer n) = return n
+unpackNum fName v       = throwError $ TypeMismatch fName "number" v
