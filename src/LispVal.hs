@@ -8,6 +8,7 @@ import Data.Array (Array, elems)
 import Data.Complex (Complex(..), imagPart, realPart)
 import Data.Ratio (numerator, denominator)
 
+-- | Values and code structures for lisp.
 data LispVal
     = Symbol String
     | Integer Integer

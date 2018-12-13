@@ -10,16 +10,18 @@ import Data.Complex (Complex(..))
 import Data.Ratio ((%))
 import Numeric (readFloat, readHex, readInt, readOct)
 
+import Control.Monad.Except (throwError)
 import Text.ParserCombinators.Parsec
 
 import LispVal (LispVal(..))
+import LispError (LispError(..), ThrowsError)
 
 -- | Read an expression. Returns the parsed `LispVal`.
-readExpr :: String -> LispVal
+readExpr :: String -> ThrowsError LispVal
 readExpr input =
     case parse parseExpr "lisp" input of
-        Left err   -> String $ "No match: " ++ show err
-        Right expr -> expr
+        Left err   -> throwError $ Parser err
+        Right expr -> return expr
 
 -- | Parses an expression. Returns the parsed `LispVal`.
 parseExpr :: Parser LispVal

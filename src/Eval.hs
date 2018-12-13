@@ -1,31 +1,36 @@
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
-
 module Eval
     (
       -- * Evaluate
       eval
     ) where
 
+import Control.Monad.Except (throwError)
+
 import LispVal (LispVal(..))
+import LispError (LispError(..), ThrowsError)
 
 -- | Evaluate `LispVal` recursively.
-eval :: LispVal -> LispVal
-eval x@(Integer _)   = x
-eval x@(Rational _)  = x
-eval x@(Real _)      = x
-eval x@(Complex _)   = x
-eval x@(Character _) = x
-eval x@(String _)    = x
-eval x@(Boolean _)   = x
-eval (List [Symbol "quote", x])   = x
-eval (List (Symbol fName : args)) = apply fName $ map eval args
+eval :: LispVal -> ThrowsError LispVal
+eval x@(Integer _)   = return x
+eval x@(Rational _)  = return x
+eval x@(Real _)      = return x
+eval x@(Complex _)   = return x
+eval x@(Character _) = return x
+eval x@(String _)    = return x
+eval x@(Boolean _)   = return x
+eval (List [Symbol "quote", x])   = return x
+eval (List (Symbol fName : args)) = apply fName =<< mapM eval args
+eval x               = throwError $ BadSpecialForm "Unrecognized special form" x
 
 -- | Apply function by name and arguments.
-apply :: String -> [LispVal] -> LispVal
-apply fName args = maybe (Boolean False) ($ args) $ lookup fName primitives
+apply :: String -> [LispVal] -> ThrowsError LispVal
+apply fName args =
+    maybe
+    (throwError $ NotFunction "Unrecognized primitive function " fName)
+    ($ args) $ lookup fName primitives
 
 -- | Primitive functions for lisp.
-primitives :: [(String, [LispVal] -> LispVal)]
+primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives =
     -- Numerical operators
     [ ("+",          numericBinop (+))
@@ -53,12 +58,15 @@ primitives =
     ]
 
 -- | Construct a lisp function with a binary numberical operator.
-numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
-numericBinop op params = Integer $ foldl1 op $ map unpackNum params
+numericBinop
+    :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
+numericBinop _ []      = throwError $ NumArgs 2 []
+numericBinop _ v@[_]   = throwError $ NumArgs 2 v
+numericBinop op params = Integer . foldl1 op <$> mapM unpackNum params
 
 -- | Construct a lisp function with one argument.
-unaryOp :: String -> (LispVal -> LispVal) -> [LispVal] -> LispVal
-unaryOp _ f [v]   = f v
+unaryOp :: String -> (LispVal -> LispVal) -> [LispVal] -> ThrowsError LispVal
+unaryOp _ f [v]   = return $ f v
 unaryOp fName _ _ = error $ fName ++ ": wrong number of arguments"
 
 -- | Type testing function `symbol?`.
@@ -134,6 +142,6 @@ stringToSymbol _          = error "string->symbol: not a string"
 -- | Unpack the integer value of the `LispVal`.
 --
 --   Current only `Integer` is supported. All other values will evaluate to `0`.
-unpackNum :: LispVal -> Integer
-unpackNum (Integer n) = n
-unpackNum _           = 0
+unpackNum :: LispVal -> ThrowsError Integer
+unpackNum (Integer n) = return n
+unpackNum v           = throwError $ TypeMismatch "number" v
