@@ -8,5 +8,5 @@ import LispError (extractValue, trapError)
 
 main :: IO ()
 main = do
-  args <- head <$> getArgs
-  putStrLn $ extractValue $ trapError $ fmap show $ eval =<< readExpr args
+    args <- head <$> getArgs
+    putStrLn $ extractValue $ trapError $ fmap show $ eval =<< readExpr args
