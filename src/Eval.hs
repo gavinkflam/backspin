@@ -40,6 +40,13 @@ primitives =
     , ("mod",        numericBinop "mod" mod)
     , ("quotient",   numericBinop "quot" quot)
     , ("remainder",  numericBinop "rem" rem)
+    -- Numerical binary operators
+    , ("=",          numBoolBinop "=" (==))
+    , ("<",          numBoolBinop "<" (<))
+    , (">",          numBoolBinop ">" (>))
+    , ("/=",         numBoolBinop "/=" (/=))
+    , (">=",         numBoolBinop ">=" (>=))
+    , ("<=",         numBoolBinop "<=" (<=))
     -- Type checking predicates
     , ("symbol?",    unaryOp "symbol?" symbolp)
     , ("integer?",   unaryOp "integer?" integerp)
@@ -66,6 +73,21 @@ numericBinop
 numericBinop fName _ []    = throwError $ NumArgs fName 2 []
 numericBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
 numericBinop fName op pms  = Integer . foldl1 op <$> mapM (unpackNum fName) pms
+
+-- | Construct a lisp function with a binary numberical predicate function.
+numBoolBinop
+    :: String
+    -> (Integer -> Integer -> Bool)
+    -> [LispVal]
+    -> ThrowsError LispVal
+numBoolBinop fName _ []    = throwError $ NumArgs fName 2 []
+numBoolBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
+numBoolBinop fName op pms  =
+    Boolean . snd . uncurry (foldl f) . g <$> mapM (unpackNum fName) pms
+  where
+    f (n, b) x = (x, b && n `op` x)
+    g (y:ys)   = ((y, True), ys)
+    g _        = error $ fName ++ ": arguments error, this shloud not happen"
 
 -- | Construct a lisp function with one argument.
 unaryOp
