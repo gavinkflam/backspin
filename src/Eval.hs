@@ -50,6 +50,12 @@ primitives =
     -- Boolean binary operators
     , ("and",        boolBoolBinop "and" (&&))
     , ("or",         boolBoolBinop "or" (||))
+    -- String binary operators
+    , ("string=?",   strBoolBinop "string=?" (==))
+    , ("string<?",   strBoolBinop "string<" (<))
+    , ("string>?",   strBoolBinop "string>" (>))
+    , ("string<=?",  strBoolBinop "string<=" (<=))
+    , ("string>=?",  strBoolBinop "string>=" (>=))
     -- Type checking predicates
     , ("symbol?",    unaryOp "symbol?" symbolp)
     , ("integer?",   unaryOp "integer?" integerp)
@@ -116,6 +122,11 @@ numBoolBinop
     -> [LispVal]
     -> ThrowsError LispVal
 numBoolBinop = chainableBinop unpackNum Boolean (&&) True
+
+-- | Construct a lisp function with a binary string predicate function.
+strBoolBinop
+    :: String -> (String -> String -> Bool) -> [LispVal] -> ThrowsError LispVal
+strBoolBinop = chainableBinop unpackStr Boolean (&&) True
 
 -- | Construct a lisp function with a binary boolean predicate function.
 boolBoolBinop
@@ -214,3 +225,8 @@ unpackNum fName v       = throwError $ TypeMismatch fName "number" v
 unpackBool :: String -> LispVal -> ThrowsError Bool
 unpackBool _ (Boolean n) = return n
 unpackBool fName v       = throwError $ TypeMismatch fName "boolean" v
+
+-- | Unpack the string value of the `String`.
+unpackStr :: String -> LispVal -> ThrowsError String
+unpackStr _ (String n) = return n
+unpackStr fName v      = throwError $ TypeMismatch fName "string" v
