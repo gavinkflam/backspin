@@ -47,6 +47,9 @@ primitives =
     , ("/=",         numBoolBinop "/=" (/=))
     , (">=",         numBoolBinop ">=" (>=))
     , ("<=",         numBoolBinop "<=" (<=))
+    -- Boolean binary operators
+    , ("and",        boolBoolBinop "and" (&&))
+    , ("or",         boolBoolBinop "or" (||))
     -- Type checking predicates
     , ("symbol?",    unaryOp "symbol?" symbolp)
     , ("integer?",   unaryOp "integer?" integerp)
@@ -88,6 +91,14 @@ numBoolBinop fName op pms  =
     f (n, b) x = (x, b && n `op` x)
     g (y:ys)   = ((y, True), ys)
     g _        = error $ fName ++ ": arguments error, this shloud not happen"
+
+-- | Construct a lisp function with a binary boolean predicate function.
+boolBoolBinop
+    :: String -> (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
+boolBoolBinop fName _ []    = throwError $ NumArgs fName 2 []
+boolBoolBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
+boolBoolBinop fName op pms  =
+    Boolean . foldl1 op <$> mapM (unpackBool fName) pms
 
 -- | Construct a lisp function with one argument.
 unaryOp
@@ -176,3 +187,8 @@ stringToSymbol v =
 unpackNum :: String -> LispVal -> ThrowsError Integer
 unpackNum _ (Integer n) = return n
 unpackNum fName v       = throwError $ TypeMismatch fName "number" v
+
+-- | Unpack the boolean value of the `Boolean`.
+unpackBool :: String -> LispVal -> ThrowsError Bool
+unpackBool _ (Boolean n) = return n
+unpackBool fName v       = throwError $ TypeMismatch fName "boolean" v
