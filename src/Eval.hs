@@ -67,15 +67,47 @@ primitives =
     , ("string->symbol", unaryOp "string->symbol" stringToSymbol)
     ]
 
+-- Construct a binary operator which the results can be cumulated along the
+-- variable length arguments.
+cumulativeBinop
+    :: (String -> LispVal -> ThrowsError a)
+    -> (a -> LispVal)
+    -> String
+    -> (a -> a -> a)
+    -> [LispVal]
+    -> ThrowsError LispVal
+cumulativeBinop _ _ name _ []    = throwError $ NumArgs name 2 []
+cumulativeBinop _ _ name _ v@[_] = throwError $ NumArgs name 2 v
+cumulativeBinop unpack constructor name op pms =
+    constructor . foldl1 op <$> mapM (unpack name) pms
+
+-- Construct a binary operator which the results can be chained with a
+-- concatenating function along the variable length arguments.
+chainableBinop
+    :: (String -> LispVal -> ThrowsError a)
+    -> (b -> LispVal)
+    -> (b -> b -> b)
+    -> b
+    -> String
+    -> (a -> a -> b)
+    -> [LispVal]
+    -> ThrowsError LispVal
+chainableBinop _ _ _ _ name _ []    = throwError $ NumArgs name 2 []
+chainableBinop _ _ _ _ name _ v@[_] = throwError $ NumArgs name 2 v
+chainableBinop unpack constructor fConcat start name op pms  =
+    constructor . snd . uncurry (foldl f) . g <$> mapM (unpack name) pms
+  where
+    f (n, b) x = (x, b `fConcat` (n `op` x))
+    g (y:ys)   = ((y, start), ys)
+    g _        = error $ name ++ ": arguments error, this shloud not happen"
+
 -- | Construct a lisp function with a binary numberical operator.
 numericBinop
     :: String
     -> (Integer -> Integer -> Integer)
     -> [LispVal]
     -> ThrowsError LispVal
-numericBinop fName _ []    = throwError $ NumArgs fName 2 []
-numericBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
-numericBinop fName op pms  = Integer . foldl1 op <$> mapM (unpackNum fName) pms
+numericBinop = cumulativeBinop unpackNum Integer
 
 -- | Construct a lisp function with a binary numberical predicate function.
 numBoolBinop
@@ -83,22 +115,12 @@ numBoolBinop
     -> (Integer -> Integer -> Bool)
     -> [LispVal]
     -> ThrowsError LispVal
-numBoolBinop fName _ []    = throwError $ NumArgs fName 2 []
-numBoolBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
-numBoolBinop fName op pms  =
-    Boolean . snd . uncurry (foldl f) . g <$> mapM (unpackNum fName) pms
-  where
-    f (n, b) x = (x, b && n `op` x)
-    g (y:ys)   = ((y, True), ys)
-    g _        = error $ fName ++ ": arguments error, this shloud not happen"
+numBoolBinop = chainableBinop unpackNum Boolean (&&) True
 
 -- | Construct a lisp function with a binary boolean predicate function.
 boolBoolBinop
     :: String -> (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
-boolBoolBinop fName _ []    = throwError $ NumArgs fName 2 []
-boolBoolBinop fName _ v@[_] = throwError $ NumArgs fName 2 v
-boolBoolBinop fName op pms  =
-    Boolean . foldl1 op <$> mapM (unpackBool fName) pms
+boolBoolBinop = cumulativeBinop unpackBool Boolean
 
 -- | Construct a lisp function with one argument.
 unaryOp
