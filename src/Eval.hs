@@ -71,6 +71,8 @@ primitives =
     -- Type converting functions
     , ("symbol->string", unaryOp "symbol->string" symbolToString)
     , ("string->symbol", unaryOp "string->symbol" stringToSymbol)
+    -- Condition and control flow functions
+    , ("if",         tenaryOp "if" if')
     ]
 
 -- Construct a binary operator which the results can be cumulated along the
@@ -132,6 +134,15 @@ strBoolBinop = chainableBinop unpackStr Boolean (&&) True
 boolBoolBinop
     :: String -> (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
 boolBoolBinop = cumulativeBinop unpackBool Boolean
+
+-- | Construct a lisp function with three arguments.
+tenaryOp
+    :: String
+    -> (LispVal -> LispVal -> LispVal -> ThrowsError LispVal)
+    -> [LispVal]
+    -> ThrowsError LispVal
+tenaryOp _ f [x,y,z] = f x y z
+tenaryOp name _ v    = throwError $ NumArgs name 3 v
 
 -- | Construct a lisp function with one argument.
 unaryOp
@@ -213,6 +224,15 @@ stringToSymbol :: LispVal -> ThrowsError LispVal
 stringToSymbol (String x) = return $ Symbol x
 stringToSymbol v =
     throwError $ TypeMismatch "string->symbol" "symbol" v
+
+-- | If primitive.
+-- Evaluate third argument if `#f`, evaluate second argument otherwise.
+if' :: LispVal -> LispVal -> LispVal -> ThrowsError LispVal
+if' condition then' else' = do
+    result <- eval condition
+    case result of
+        Boolean False -> eval else'
+        _             -> eval then'
 
 -- | Unpack the integer value of the `LispVal`.
 --
