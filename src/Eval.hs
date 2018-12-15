@@ -76,7 +76,17 @@ primitives =
     -- List functions
     , ("car",        unaryOp "car" car)
     , ("cdr",        unaryOp "cdr" cdr)
+    , ("cons",       binop "cons" cons)
     ]
+
+-- Construct a binary operator.
+binop 
+    :: String
+    -> (LispVal -> LispVal -> ThrowsError LispVal)
+    -> [LispVal]
+    -> ThrowsError LispVal
+binop _ f [x,y] = f x y
+binop name _ v  = throwError $ NumArgs name 2 v
 
 -- Construct a binary operator which the results can be cumulated along the
 -- variable length arguments.
@@ -249,6 +259,13 @@ cdr (List (_:xs))         = return $ List xs
 cdr (DottedList [_] y)    = return y
 cdr (DottedList (_:xs) y) = return $ DottedList xs y
 cdr x                     = throwError $ TypeMismatch "cdr" "pair" x
+
+-- | Cons primitive.
+cons :: LispVal -> LispVal -> ThrowsError LispVal
+cons x (List [])         = return $ List [x]
+cons x (List ys)         = return $ List $ x:ys
+cons x (DottedList ys z) = return $ DottedList (x:ys) z
+cons x y                 = return $ DottedList [x] y
 
 -- | Unpack the integer value of the `LispVal`.
 --
