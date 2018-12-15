@@ -77,6 +77,9 @@ primitives =
     , ("car",        unaryOp "car" car)
     , ("cdr",        unaryOp "cdr" cdr)
     , ("cons",       binop "cons" cons)
+    -- Equality functions
+    , ("eq?",        binop "eq?" eqv) -- Defined as eqv? to ease implementation
+    , ("eqv?",       binop "eqv?" eqv)
     ]
 
 -- Construct a binary operator.
@@ -266,6 +269,22 @@ cons x (List [])         = return $ List [x]
 cons x (List ys)         = return $ List $ x:ys
 cons x (DottedList ys z) = return $ DottedList (x:ys) z
 cons x y                 = return $ DottedList [x] y
+
+-- | Eqv equality predicate primitive.
+--
+--   Return `#t` if x and y are the same type of symbol, number, character or
+--   boolean; and their value is equivalent.
+--
+--   Return `#f` if otherwise.
+eqv :: LispVal -> LispVal -> ThrowsError LispVal
+eqv (Symbol x)    (Symbol y)    = return $ Boolean $ x == y
+eqv (Integer x)   (Integer y)   = return $ Boolean $ x == y
+eqv (Rational x)  (Rational y)  = return $ Boolean $ x == y
+eqv (Real x)      (Real y)      = return $ Boolean $ x == y
+eqv (Complex x)   (Complex y)   = return $ Boolean $ x == y
+eqv (Character x) (Character y) = return $ Boolean $ x == y
+eqv (Boolean x)   (Boolean y)   = return $ Boolean $ x == y
+eqv _ _                             = return $ Boolean False
 
 -- | Unpack the integer value of the `LispVal`.
 --
