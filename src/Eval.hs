@@ -73,6 +73,9 @@ primitives =
     , ("string->symbol", unaryOp "string->symbol" stringToSymbol)
     -- Condition and control flow functions
     , ("if",         tenaryOp "if" if')
+    -- List functions
+    , ("car",        unaryOp "car" car)
+    , ("cdr",        unaryOp "cdr" cdr)
     ]
 
 -- Construct a binary operator which the results can be cumulated along the
@@ -233,6 +236,19 @@ if' condition then' else' = do
     case result of
         Boolean False -> eval else'
         _             -> eval then'
+
+-- | Car primitive.
+car :: LispVal -> ThrowsError LispVal
+car (List (x:_))         = return x
+car (DottedList (x:_) _) = return x
+car x                    = throwError $ TypeMismatch "car" "pair" x
+
+-- | Cdr primitive.
+cdr :: LispVal -> ThrowsError LispVal
+cdr (List (_:xs))         = return $ List xs
+cdr (DottedList [_] y)    = return y
+cdr (DottedList (_:xs) y) = return $ DottedList xs y
+cdr x                     = throwError $ TypeMismatch "cdr" "pair" x
 
 -- | Unpack the integer value of the `LispVal`.
 --
