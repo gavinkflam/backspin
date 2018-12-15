@@ -4,7 +4,9 @@ module Eval
       eval
     ) where
 
+import Control.Monad (zipWithM)
 import Control.Monad.Except (throwError)
+import Data.Array (elems)
 
 import LispVal (LispVal(..))
 import LispError (LispError(..), ThrowsError)
@@ -80,6 +82,7 @@ primitives =
     -- Equality functions
     , ("eq?",        binop "eq?" eqv) -- Defined as eqv? to ease implementation
     , ("eqv?",       binop "eqv?" eqv)
+    , ("equal?",     binop "equal?" equal)
     ]
 
 -- Construct a binary operator.
@@ -284,7 +287,23 @@ eqv (Real x)      (Real y)      = return $ Boolean $ x == y
 eqv (Complex x)   (Complex y)   = return $ Boolean $ x == y
 eqv (Character x) (Character y) = return $ Boolean $ x == y
 eqv (Boolean x)   (Boolean y)   = return $ Boolean $ x == y
-eqv _ _                             = return $ Boolean False
+eqv _ _                         = return $ Boolean False
+
+-- | `equal` equality predicate primitive.
+--
+--   Return `#t` if x and y if `(eq x y)` is #t; or they are the same type of
+--   string and their value is equivalent; or they are list, dotted list or
+--   vector and the values are recursively equivalent.
+--
+--   Return `#f` if otherwise.
+equal :: LispVal -> LispVal -> ThrowsError LispVal
+equal (String x)        (String y)        = return $ Boolean $ x == y
+equal (List xs)         (List ys)         =
+    Boolean . all (== Boolean True) <$> zipWithM equal xs ys
+equal (DottedList xs m) (DottedList ys n) = equal (List $ m:xs) (List $ n:ys)
+equal (Vector xs)       (Vector ys)       =
+    equal (List $ elems xs) (List $ elems ys)
+equal x y                                 = eqv x y
 
 -- | Unpack the integer value of the `LispVal`.
 --
