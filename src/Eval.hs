@@ -40,52 +40,56 @@ apply fName args =
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives =
     -- Numerical operators
-    [ ("+",          numericBinop "+" (+))
-    , ("-",          numericBinop "-" (-))
-    , ("*",          numericBinop "*" (*))
-    , ("/",          numericBinop "div" div)
-    , ("mod",        numericBinop "mod" mod)
-    , ("quotient",   numericBinop "quot" quot)
-    , ("remainder",  numericBinop "rem" rem)
+    [ ("+",              numericBinop "+" (+))
+    , ("-",              numericBinop "-" (-))
+    , ("*",              numericBinop "*" (*))
+    , ("/",              numericBinop "div" div)
+    , ("mod",            numericBinop "mod" mod)
+    , ("quotient",       numericBinop "quot" quot)
+    , ("remainder",      numericBinop "rem" rem)
     -- Numerical binary operators
-    , ("=",          numBoolBinop "=" (==))
-    , ("<",          numBoolBinop "<" (<))
-    , (">",          numBoolBinop ">" (>))
-    , ("/=",         numBoolBinop "/=" (/=))
-    , (">=",         numBoolBinop ">=" (>=))
-    , ("<=",         numBoolBinop "<=" (<=))
+    , ("=",              numBoolBinop "=" (==))
+    , ("<",              numBoolBinop "<" (<))
+    , (">",              numBoolBinop ">" (>))
+    , ("/=",             numBoolBinop "/=" (/=))
+    , (">=",             numBoolBinop ">=" (>=))
+    , ("<=",             numBoolBinop "<=" (<=))
     -- Boolean binary operators
-    , ("and",        boolBoolBinop "and" (&&))
-    , ("or",         boolBoolBinop "or" (||))
+    , ("and",            boolBoolBinop "and" (&&))
+    , ("or",             boolBoolBinop "or" (||))
     -- String binary operators
-    , ("string=?",   strBoolBinop "string=?" (==))
-    , ("string<?",   strBoolBinop "string<" (<))
-    , ("string>?",   strBoolBinop "string>" (>))
-    , ("string<=?",  strBoolBinop "string<=" (<=))
-    , ("string>=?",  strBoolBinop "string>=" (>=))
+    , ("string=?",       strBoolBinop "string=?" (==))
+    , ("string<?",       strBoolBinop "string<" (<))
+    , ("string>?",       strBoolBinop "string>" (>))
+    , ("string<=?",      strBoolBinop "string<=" (<=))
+    , ("string>=?",      strBoolBinop "string>=" (>=))
     -- Type checking predicates
-    , ("symbol?",    unaryOp "symbol?" symbolp)
-    , ("integer?",   unaryOp "integer?" integerp)
-    , ("rational?",  unaryOp "rational?" rationalp)
-    , ("real?",      unaryOp "real?" realp)
-    , ("complex?",   unaryOp "complex?" complexp)
-    , ("number?",    unaryOp "number?" numberp)
-    , ("character?", unaryOp "character?" characterp)
-    , ("string?",    unaryOp "string?" stringp)
-    , ("boolean?",   unaryOp "boolean?" booleanp)
-    , ("list?",      unaryOp "list?" listp)
-    , ("pair?",      unaryOp "pair?" pairp)
+    , ("symbol?",        unaryOp "symbol?" symbolp)
+    , ("integer?",       unaryOp "integer?" integerp)
+    , ("rational?",      unaryOp "rational?" rationalp)
+    , ("real?",          unaryOp "real?" realp)
+    , ("complex?",       unaryOp "complex?" complexp)
+    , ("number?",        unaryOp "number?" numberp)
+    , ("character?",     unaryOp "character?" characterp)
+    , ("string?",        unaryOp "string?" stringp)
+    , ("boolean?",       unaryOp "boolean?" booleanp)
+    , ("list?",          unaryOp "list?" listp)
+    , ("pair?",          unaryOp "pair?" pairp)
     -- Type converting functions
     , ("symbol->string", unaryOp "symbol->string" symbolToString)
     , ("string->symbol", unaryOp "string->symbol" stringToSymbol)
     -- List functions
-    , ("car",        unaryOp "car" car)
-    , ("cdr",        unaryOp "cdr" cdr)
-    , ("cons",       binop "cons" cons)
+    , ("car",            unaryOp "car" car)
+    , ("cdr",            unaryOp "cdr" cdr)
+    , ("cons",           binop "cons" cons)
     -- Equality functions
-    , ("eq?",        binop "eq?" eqv) -- Defined as eqv? to ease implementation
-    , ("eqv?",       binop "eqv?" eqv)
-    , ("equal?",     binop "equal?" equal)
+    , ("eq?",            binop "eq?" eqv)
+    -- ^ Defined as eqv? to ease implementation
+    , ("eqv?",           binop "eqv?" eqv)
+    , ("equal?",         binop "equal?" equal)
+    -- String functions
+    , ("make-string",    makeString)
+    , ("string",         string)
     ]
 
 -- Construct a binary operator.
@@ -337,6 +341,19 @@ case' (_ : List (expr : _) : _) = throwError $ TypeMismatch "case" "list" expr
 case' (_ : expr : _)            = throwError $ TypeMismatch "case" "list" expr
 case' _ = return $ Symbol "nil"
 
+-- | Returns a newly allocated string of length k of the given character.
+makeString :: [LispVal] -> ThrowsError LispVal
+makeString [Integer n, Character c] =
+    return $ String $ replicate (fromInteger n) c
+makeString [Integer _, expr] =
+    throwError $ TypeMismatch "make-string" "character" expr
+makeString [expr, _] = throwError $ TypeMismatch "make-string" "integer" expr
+makeString expr      = throwError $ NumArgs "make-string" 2 expr
+
+-- | Returns a newly allocated string composed of the character arguments.
+string :: [LispVal] -> ThrowsError LispVal
+string vals = String <$> mapM (unpackChar "string") vals
+
 -- | Unpack the integer value of the `LispVal`.
 --
 --   Current only `Integer` is supported. All other values will evaluate to `0`.
@@ -348,6 +365,11 @@ unpackNum fName v       = throwError $ TypeMismatch fName "number" v
 unpackBool :: String -> LispVal -> ThrowsError Bool
 unpackBool _ (Boolean n) = return n
 unpackBool fName v       = throwError $ TypeMismatch fName "boolean" v
+
+-- | Unpack the char value of the `Character`.
+unpackChar :: String -> LispVal -> ThrowsError Char
+unpackChar _ (Character n) = return n
+unpackChar fName v         = throwError $ TypeMismatch fName "character" v
 
 -- | Unpack the string value of the `String`.
 unpackStr :: String -> LispVal -> ThrowsError String
