@@ -24,6 +24,7 @@ eval (List [Symbol "quote", x]) = return x
 -- Conditionals.
 eval (List (Symbol "if" : args))   = tenaryOp "if" if' args
 eval (List (Symbol "cond" : args)) = cond args
+eval (List (Symbol "case" : args)) = case' args
 -- Primitives.
 eval (List (Symbol fName : args)) = apply fName =<< mapM eval args
 eval x = throwError $ BadSpecialForm "Unrecognized special form" x
@@ -309,7 +310,6 @@ equal x y                                 = eqv x y
 
 -- | `cond` conditional.
 cond :: [LispVal] -> ThrowsError LispVal
-cond [] = return $ Symbol "nil"
 cond (List (Symbol "else" : exps):_) = last <$> mapM eval exps
 cond (List [condition, Symbol "=>", expr] : next) = do
     result <- eval condition
@@ -324,7 +324,18 @@ cond (List (condition : exps) : next) = do
   where
     fReturn r [] = r
     fReturn _ xs = last xs
-cond (expr:_) = throwError $ BadSpecialForm "Unrecognized cond expression" expr
+cond _ = return $ Symbol "nil"
+
+-- | `case` symtax form.
+case' :: [LispVal] -> ThrowsError LispVal
+case' (valExpr : List (List dats : exps) : next)  = do
+    isMember <- elem (Boolean True) <$>
+        mapM (eval . List . (++) [Symbol "equal?", valExpr] . flip (:) []) dats
+    if isMember then last <$> mapM eval exps else case' $ valExpr : next
+case' (_ : List (Symbol "else" : exps) : _) = last <$> mapM eval exps
+case' (_ : List (expr : _) : _) = throwError $ TypeMismatch "case" "list" expr
+case' (_ : expr : _)            = throwError $ TypeMismatch "case" "list" expr
+case' _ = return $ Symbol "nil"
 
 -- | Unpack the integer value of the `LispVal`.
 --
