@@ -90,6 +90,8 @@ primitives =
     -- String functions
     , ("make-string",    makeString)
     , ("string",         string)
+    , ("string-length",  stringLength)
+    , ("string-ref",     stringRef)
     ]
 
 -- Construct a binary operator.
@@ -353,6 +355,27 @@ makeString expr      = throwError $ NumArgs "make-string" 2 expr
 -- | Returns a newly allocated string composed of the character arguments.
 string :: [LispVal] -> ThrowsError LispVal
 string vals = String <$> mapM (unpackChar "string") vals
+
+-- | Returns the number of characters in the given string.
+stringLength :: [LispVal] -> ThrowsError LispVal
+stringLength [String s] = return $ Integer $ toInteger $ length s
+stringLength [expr] = throwError $ TypeMismatch "string-length" "string" expr
+stringLength expr = throwError $ NumArgs "string-length" 1 expr
+
+-- | Returns the charcter at the given index of the string.
+stringRef :: [LispVal] -> ThrowsError LispVal
+stringRef [String s, Integer k] =
+    if atLeast (k' + 1) s
+       then return $ Character $ s !! k'
+       else return $ Symbol "nil"
+  where
+    k'          = fromInteger k
+    atLeast 0 _ = True
+    atLeast n l = not $ null $ drop (n - 1) l
+stringRef [String _, expr] =
+    throwError $ TypeMismatch "string-ref" "integer" expr
+stringRef [expr, _] = throwError $ TypeMismatch "string-ref" "string" expr
+stringRef expr      = throwError $ NumArgs "string-ref" 2 expr
 
 -- | Unpack the integer value of the `LispVal`.
 --
