@@ -13,16 +13,20 @@ import LispError (LispError(..), ThrowsError)
 
 -- | Evaluate `LispVal` recursively.
 eval :: LispVal -> ThrowsError LispVal
-eval x@(Integer _)   = return x
-eval x@(Rational _)  = return x
-eval x@(Real _)      = return x
-eval x@(Complex _)   = return x
-eval x@(Character _) = return x
-eval x@(String _)    = return x
-eval x@(Boolean _)   = return x
-eval (List [Symbol "quote", x])   = return x
+eval x@(Integer _)              = return x
+eval x@(Rational _)             = return x
+eval x@(Real _)                 = return x
+eval x@(Complex _)              = return x
+eval x@(Character _)            = return x
+eval x@(String _)               = return x
+eval x@(Boolean _)              = return x
+eval (List [Symbol "quote", x]) = return x
+-- Conditionals.
+eval (List (Symbol "if" : args))   = tenaryOp "if" if' args
+eval (List (Symbol "cond" : args)) = cond args
+-- Primitives.
 eval (List (Symbol fName : args)) = apply fName =<< mapM eval args
-eval x               = throwError $ BadSpecialForm "Unrecognized special form" x
+eval x = throwError $ BadSpecialForm "Unrecognized special form" x
 
 -- | Apply function by name and arguments.
 apply :: String -> [LispVal] -> ThrowsError LispVal
@@ -73,8 +77,6 @@ primitives =
     -- Type converting functions
     , ("symbol->string", unaryOp "symbol->string" symbolToString)
     , ("string->symbol", unaryOp "string->symbol" stringToSymbol)
-    -- Condition and control flow functions
-    , ("if",         tenaryOp "if" if')
     -- List functions
     , ("car",        unaryOp "car" car)
     , ("cdr",        unaryOp "cdr" cdr)
@@ -244,7 +246,7 @@ stringToSymbol (String x) = return $ Symbol x
 stringToSymbol v =
     throwError $ TypeMismatch "string->symbol" "symbol" v
 
--- | If primitive.
+-- | `if` conditional.
 -- Evaluate third argument if `#f`, evaluate second argument otherwise.
 if' :: LispVal -> LispVal -> LispVal -> ThrowsError LispVal
 if' condition then' else' = do
@@ -304,6 +306,25 @@ equal (DottedList xs m) (DottedList ys n) = equal (List $ m:xs) (List $ n:ys)
 equal (Vector xs)       (Vector ys)       =
     equal (List $ elems xs) (List $ elems ys)
 equal x y                                 = eqv x y
+
+-- | `cond` conditional.
+cond :: [LispVal] -> ThrowsError LispVal
+cond [] = return $ Symbol "nil"
+cond (List (Symbol "else" : exps):_) = last <$> mapM eval exps
+cond (List [condition, Symbol "=>", expr] : next) = do
+    result <- eval condition
+    case result of
+        Boolean False -> cond next
+        _             -> eval <$> List $ [expr, List [Symbol "quote", result]]
+cond (List (condition : exps) : next) = do
+    result <- eval condition
+    case result of
+        Boolean False -> cond next
+        _             -> fReturn result <$> mapM eval exps
+  where
+    fReturn r [] = r
+    fReturn _ xs = last xs
+cond (expr:_) = throwError $ BadSpecialForm "Unrecognized cond expression" expr
 
 -- | Unpack the integer value of the `LispVal`.
 --
