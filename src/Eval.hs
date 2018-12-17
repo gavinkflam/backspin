@@ -26,15 +26,15 @@ eval (List (Symbol "if" : args))   = tenaryOp "if" if' args
 eval (List (Symbol "cond" : args)) = cond args
 eval (List (Symbol "case" : args)) = case' args
 -- Primitives.
-eval (List (Symbol fName : args)) = apply fName =<< mapM eval args
+eval (List (Symbol name : args))   = apply name =<< mapM eval args
 eval x = throwError $ BadSpecialForm "Unrecognized special form" x
 
 -- | Apply function by name and arguments.
 apply :: String -> [LispVal] -> ThrowsError LispVal
-apply fName args =
+apply name args =
     maybe
-    (throwError $ NotFunction "Unrecognized primitive function" fName)
-    ($ args) $ lookup fName primitives
+    (throwError $ NotFunction "Unrecognized primitive function" name)
+    ($ args) $ lookup name primitives
 
 -- | Primitive functions for lisp.
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
@@ -179,7 +179,7 @@ unaryOp
     -> [LispVal]
     -> ThrowsError LispVal
 unaryOp _ f [v]   = f v
-unaryOp fName _ v = throwError $ NumArgs fName 1 v
+unaryOp name _ v  = throwError $ NumArgs name 1 v
 
 -- | Type testing function `symbol?`.
 symbolp :: LispVal -> ThrowsError LispVal
@@ -382,19 +382,19 @@ stringRef expr      = throwError $ NumArgs "string-ref" 2 expr
 --   Current only `Integer` is supported. All other values will evaluate to `0`.
 unpackNum :: String -> LispVal -> ThrowsError Integer
 unpackNum _ (Integer n) = return n
-unpackNum fName v       = throwError $ TypeMismatch fName "number" v
+unpackNum name v        = throwError $ TypeMismatch name "number" v
 
 -- | Unpack the boolean value of the `Boolean`.
 unpackBool :: String -> LispVal -> ThrowsError Bool
 unpackBool _ (Boolean n) = return n
-unpackBool fName v       = throwError $ TypeMismatch fName "boolean" v
+unpackBool name v        = throwError $ TypeMismatch name "boolean" v
 
 -- | Unpack the char value of the `Character`.
 unpackChar :: String -> LispVal -> ThrowsError Char
 unpackChar _ (Character n) = return n
-unpackChar fName v         = throwError $ TypeMismatch fName "character" v
+unpackChar name v          = throwError $ TypeMismatch name "character" v
 
 -- | Unpack the string value of the `String`.
 unpackStr :: String -> LispVal -> ThrowsError String
 unpackStr _ (String n) = return n
-unpackStr fName v      = throwError $ TypeMismatch fName "string" v
+unpackStr name v       = throwError $ TypeMismatch name "string" v
