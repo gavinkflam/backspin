@@ -8,26 +8,27 @@ import Control.Monad (zipWithM)
 import Control.Monad.Except (throwError)
 import Data.Array (elems)
 
+import LispEnv (LispEnv)
 import LispVal (LispVal(..))
-import LispError (LispError(..), ThrowsError)
+import LispError (IOThrowsError, LispError(..), ThrowsError)
 
 -- | Evaluate `LispVal` recursively.
-eval :: LispVal -> ThrowsError LispVal
-eval x@(Integer _)              = return x
-eval x@(Rational _)             = return x
-eval x@(Real _)                 = return x
-eval x@(Complex _)              = return x
-eval x@(Character _)            = return x
-eval x@(String _)               = return x
-eval x@(Boolean _)              = return x
-eval (List [Symbol "quote", x]) = return x
+eval :: LispEnv -> LispVal -> IOThrowsError LispVal
+eval _ x@(Integer _)                   = return x
+eval _ x@(Rational _)                  = return x
+eval _ x@(Real _)                      = return x
+eval _ x@(Complex _)                   = return x
+eval _ x@(Character _)                 = return x
+eval _ x@(String _)                    = return x
+eval _ x@(Boolean _)                   = return x
+eval _ (List [Symbol "quote", x])      = return x
 -- Conditionals.
-eval (List (Symbol "if" : args))   = tenaryOp "if" if' args
-eval (List (Symbol "cond" : args)) = cond args
-eval (List (Symbol "case" : args)) = case' args
+eval env (List (Symbol "if" : args))   = tenaryOp "if" (if' env) args
+eval env (List (Symbol "cond" : args)) = cond env args
+eval env (List (Symbol "case" : args)) = case' env args
 -- Primitives.
-eval (List (Symbol name : args))   = apply name =<< mapM eval args
-eval x = throwError $ BadSpecialForm "Unrecognized special form" x
+eval env (List (Symbol name : args))   = apply name =<< mapM (eval env) args
+eval _ x = throwError $ BadSpecialForm "Unrecognized special form" x
 
 -- | Apply function by name and arguments.
 apply :: String -> [LispVal] -> ThrowsError LispVal
@@ -255,12 +256,12 @@ stringToSymbol v =
 
 -- | `if` conditional.
 -- Evaluate third argument if `#f`, evaluate second argument otherwise.
-if' :: LispVal -> LispVal -> LispVal -> ThrowsError LispVal
-if' condition then' else' = do
-    result <- eval condition
+if' :: LispEnv -> LispVal -> LispVal -> LispVal -> ThrowsError LispVal
+if' env condition then' else' = do
+    result <- eval env condition
     case result of
-        Boolean False -> eval else'
-        _             -> eval then'
+        Boolean False -> eval env else'
+        _             -> eval env then'
 
 -- | Car primitive.
 car :: LispVal -> ThrowsError LispVal
@@ -315,33 +316,35 @@ equal (Vector xs)       (Vector ys)       =
 equal x y                                 = eqv x y
 
 -- | `cond` conditional.
-cond :: [LispVal] -> ThrowsError LispVal
-cond (List (Symbol "else" : exps):_) = last <$> mapM eval exps
-cond (List [condition, Symbol "=>", expr] : next) = do
+cond :: LispEnv -> [LispVal] -> ThrowsError LispVal
+cond env (List (Symbol "else" : exps):_) = last <$> mapM (eval env) exps
+cond env (List [condition, Symbol "=>", expr] : next) = do
     result <- eval condition
     case result of
         Boolean False -> cond next
-        _             -> eval <$> List $ [expr, List [Symbol "quote", result]]
-cond (List (condition : exps) : next) = do
-    result <- eval condition
+        _             ->
+            eval env <$> List $ [expr, List [Symbol "quote", result]]
+cond env (List (condition : exps) : next) = do
+    result <- eval env condition
     case result of
         Boolean False -> cond next
-        _             -> fReturn result <$> mapM eval exps
+        _             -> fReturn result <$> mapM (eval env) exps
   where
     fReturn r [] = r
     fReturn _ xs = last xs
-cond _ = return $ Symbol "nil"
+cond _ _ = return $ Symbol "nil"
 
 -- | `case` symtax form.
-case' :: [LispVal] -> ThrowsError LispVal
-case' (valExpr : List (List dats : exps) : next)  = do
+case' :: LispEnv -> [LispVal] -> ThrowsError LispVal
+case' env (valExpr : List (List dats : exps) : next)  = do
     isMember <- elem (Boolean True) <$>
-        mapM (eval . List . (++) [Symbol "equal?", valExpr] . flip (:) []) dats
-    if isMember then last <$> mapM eval exps else case' $ valExpr : next
-case' (_ : List (Symbol "else" : exps) : _) = last <$> mapM eval exps
-case' (_ : List (expr : _) : _) = throwError $ TypeMismatch "case" "list" expr
-case' (_ : expr : _)            = throwError $ TypeMismatch "case" "list" expr
-case' _ = return $ Symbol "nil"
+        mapM (eval env . List . (++) [Symbol "equal?", valExpr] . flip (:) [])
+        dats
+    if isMember then last <$> mapM (eval env) exps else case' $ valExpr : next
+case' env (_ : List (Symbol "else" : exps) : _) = last <$> mapM (eval env) exps
+case' _ (_ : List (expr : _) : _) = throwError $ TypeMismatch "case" "list" expr
+case' _ (_ : expr : _)            = throwError $ TypeMismatch "case" "list" expr
+case' _ _ = return $ Symbol "nil"
 
 -- | Returns a newly allocated string of length k of the given character.
 makeString :: [LispVal] -> ThrowsError LispVal

@@ -9,6 +9,7 @@ module LispEnv
     , getVar
       -- * Write
     , setVar
+    , defineVar
     ) where
 
 import Control.Monad.Except (liftIO, throwError)
@@ -44,3 +45,15 @@ setVar envRef name val =
     (throwError $ UnboundVar "Setting an unbound variable" name)
     (liftIO . (`writeIORef` val))
     <$> lookup name =<< liftIO (readIORef envRef)) >> return val
+
+-- | Define a new variable or update an bounded variable.
+defineVar :: LispEnv -> String -> LispVal -> IOThrowsError LispVal
+defineVar envRef name val = do
+    bound <- liftIO $ isBound envRef name
+    if bound
+        then setVar envRef name val
+        else liftIO $ do
+            valRef <- newIORef val
+            env    <- readIORef envRef
+            writeIORef envRef ((name, valRef) : env)
+            return val
