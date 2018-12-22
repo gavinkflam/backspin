@@ -5,10 +5,11 @@ module Repl
     ) where
 
 import System.IO (getLine, hFlush, putStr, putStrLn, stdout)
+import Control.Monad.Except (liftEither)
 
 import Eval (eval)
 import LispEnv (LispEnv, newLispEnv)
-import LispError (extractValue, trapError)
+import LispError (runIOThrows)
 import Parser (readExpr)
 
 -- | Run repl session that exit with the command `:quit`.
@@ -22,8 +23,8 @@ readPrompt prompt = putStr prompt >> hFlush stdout >> getLine
 
 -- | Evaluate the expression and print the output.
 evalAndPrint :: LispEnv -> String -> IO ()
-evalAndPrint env expr =
-    putStrLn $ extractValue $ trapError $ show <$> (eval env =<< readExpr expr)
+evalAndPrint env expr = putStrLn =<< runIOThrows
+    (show <$> (eval env =<< liftEither (readExpr expr)))
 
 -- | Continue to get input from `prompt` and execute `action`, until `cond`
 --   was met.

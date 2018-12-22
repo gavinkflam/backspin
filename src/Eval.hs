@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Eval
     (
       -- * Evaluate
@@ -5,7 +7,7 @@ module Eval
     ) where
 
 import Control.Monad (zipWithM)
-import Control.Monad.Except (throwError)
+import Control.Monad.Except (MonadError, liftEither, throwError)
 import Data.Array (elems)
 
 import LispEnv (LispEnv)
@@ -27,7 +29,8 @@ eval env (List (Symbol "if" : args))   = tenaryOp "if" (if' env) args
 eval env (List (Symbol "cond" : args)) = cond env args
 eval env (List (Symbol "case" : args)) = case' env args
 -- Primitives.
-eval env (List (Symbol name : args))   = apply name =<< mapM (eval env) args
+eval env (List (Symbol name : args))   =
+    liftEither . apply name =<< mapM (eval env) args
 eval _ x = throwError $ BadSpecialForm "Unrecognized special form" x
 
 -- | Apply function by name and arguments.
@@ -166,10 +169,11 @@ boolBoolBinop = cumulativeBinop unpackBool Boolean
 
 -- | Construct a lisp function with three arguments.
 tenaryOp
-    :: String
-    -> (LispVal -> LispVal -> LispVal -> ThrowsError LispVal)
+    :: MonadError LispError m
+    => String
+    -> (LispVal -> LispVal -> LispVal -> m LispVal)
     -> [LispVal]
-    -> ThrowsError LispVal
+    -> m LispVal
 tenaryOp _ f [x,y,z] = f x y z
 tenaryOp name _ v    = throwError $ NumArgs name 3 v
 
@@ -256,7 +260,7 @@ stringToSymbol v =
 
 -- | `if` conditional.
 -- Evaluate third argument if `#f`, evaluate second argument otherwise.
-if' :: LispEnv -> LispVal -> LispVal -> LispVal -> ThrowsError LispVal
+if' :: LispEnv -> LispVal -> LispVal -> LispVal -> IOThrowsError LispVal
 if' env condition then' else' = do
     result <- eval env condition
     case result of
@@ -316,18 +320,18 @@ equal (Vector xs)       (Vector ys)       =
 equal x y                                 = eqv x y
 
 -- | `cond` conditional.
-cond :: LispEnv -> [LispVal] -> ThrowsError LispVal
+cond :: LispEnv -> [LispVal] -> IOThrowsError LispVal
 cond env (List (Symbol "else" : exps):_) = last <$> mapM (eval env) exps
 cond env (List [condition, Symbol "=>", expr] : next) = do
-    result <- eval condition
+    result <- eval env condition
     case result of
-        Boolean False -> cond next
+        Boolean False -> cond env next
         _             ->
             eval env <$> List $ [expr, List [Symbol "quote", result]]
 cond env (List (condition : exps) : next) = do
     result <- eval env condition
     case result of
-        Boolean False -> cond next
+        Boolean False -> cond env next
         _             -> fReturn result <$> mapM (eval env) exps
   where
     fReturn r [] = r
@@ -335,12 +339,15 @@ cond env (List (condition : exps) : next) = do
 cond _ _ = return $ Symbol "nil"
 
 -- | `case` symtax form.
-case' :: LispEnv -> [LispVal] -> ThrowsError LispVal
+case' :: LispEnv -> [LispVal] -> IOThrowsError LispVal
 case' env (valExpr : List (List dats : exps) : next)  = do
-    isMember <- elem (Boolean True) <$>
+    isMember <-
+        elem (Boolean True) <$>
         mapM (eval env . List . (++) [Symbol "equal?", valExpr] . flip (:) [])
         dats
-    if isMember then last <$> mapM (eval env) exps else case' $ valExpr : next
+    if isMember
+       then last <$> mapM (eval env) exps
+       else case' env $ valExpr : next
 case' env (_ : List (Symbol "else" : exps) : _) = last <$> mapM (eval env) exps
 case' _ (_ : List (expr : _) : _) = throwError $ TypeMismatch "case" "list" expr
 case' _ (_ : expr : _)            = throwError $ TypeMismatch "case" "list" expr

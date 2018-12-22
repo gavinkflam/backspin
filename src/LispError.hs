@@ -6,9 +6,6 @@ module LispError
     , IOThrowsError
       -- * IO
     , runIOThrows
-      -- * Utility
-    , extractValue
-    , trapError
     ) where
 
 import Control.Monad.Except (ExceptT, MonadError, catchError, runExceptT)
