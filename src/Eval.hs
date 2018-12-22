@@ -7,10 +7,11 @@ module Eval
     ) where
 
 import Control.Monad (zipWithM)
-import Control.Monad.Except (MonadError, liftEither, throwError)
+import Control.Monad.Except (MonadError, liftEither, liftIO, throwError)
 import Data.Array (elems)
+import Data.Maybe (isNothing)
 
-import Env (defineVar, getVar, setVar)
+import Env (bindVars, defineVar, getVar, setVar)
 import Error (IOThrowsError)
 import Type (LispEnv, LispError(..), LispVal(..), ThrowsError)
 
@@ -34,17 +35,45 @@ eval env (List [Symbol "set!", Symbol name, form]) =
     setVar env name =<< eval env form
 eval env (List [Symbol "define", Symbol name, form]) =
     defineVar env name =<< eval env form
--- Primitives.
-eval env (List (Symbol name : args))   =
-    liftEither . apply name =<< mapM (eval env) args
+eval env (List (Symbol "define" : List (Symbol name : pns) : body)) =
+    defineVar env name =<< liftEither (makeFunc pns Nothing body env)
+eval env (List (Symbol "define" : DottedList (Symbol name : pns) vn : body)) =
+    defineVar env name =<< liftEither (makeFunc pns (Just vn) body env)
+-- Functions.
+eval env (List (Symbol "lambda" : List pns : body)) =
+    liftEither $ makeFunc pns Nothing body env
+eval env (List (Symbol "lambda" : DottedList pns vn : body)) =
+    liftEither $ makeFunc pns (Just vn) body env
+eval env (List (Symbol "lambda" : vn@(Symbol _) : body)) =
+    liftEither $ makeFunc [] (Just vn) body env
+eval env (List (sym@(Symbol _) : args)) = do
+    func  <- eval env sym
+    args' <- mapM (eval env) args
+    apply func args'
+-- Bad forms.
 eval _ x = throwError $ BadSpecialForm "Unrecognized special form" x
 
 -- | Apply function by name and arguments.
-apply :: String -> [LispVal] -> ThrowsError LispVal
-apply name args =
-    maybe
-    (throwError $ NotFunction "Unrecognized primitive function" name)
-    ($ args) $ lookup name primitives
+apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
+apply (PrimitiveFunc name) args =
+    case lookup name primitives of
+        Nothing ->
+            throwError $ NotFunction "Unrecognized primitive function" name
+        Just f  -> liftEither $ f args
+apply (Func pns vn body env) args =
+    if lenOf pns /= lenOf args && isNothing vn
+       then throwError $ NumArgs "<lambda>" (lenOf pns) args
+       else evalBody =<< bindVarArgs vn =<< newEnv
+  where
+    lenOf                    = toInteger . length
+    newEnv                   = liftIO $ bindVars env $ zip pns args
+    evalBody bindings        = last <$> mapM (eval bindings) body
+    remainingArgs            = drop (length pns) args
+    bindVarArgs arg bindings =
+        case arg of
+            Just n  -> liftIO $ bindVars bindings [(n, List remainingArgs)]
+            Nothing -> return bindings
+apply x _ = throwError $ TypeMismatch "apply" "function" x
 
 -- | Primitive functions for lisp.
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
@@ -392,6 +421,19 @@ stringRef [String _, expr] =
     throwError $ TypeMismatch "string-ref" "integer" expr
 stringRef [expr, _] = throwError $ TypeMismatch "string-ref" "string" expr
 stringRef expr      = throwError $ NumArgs "string-ref" 2 expr
+
+-- | Make a `Func` structure.
+makeFunc
+    :: [LispVal] -> Maybe LispVal -> [LispVal] -> LispEnv -> ThrowsError LispVal
+makeFunc pns vn body env = do
+    paramNames <- mapM symbolString pns
+    varArgName <- mapM symbolString vn
+    return $ Func paramNames varArgName body env
+
+-- | Extract symbol string from `LispVal`.
+symbolString :: LispVal -> ThrowsError String
+symbolString (Symbol n) = return n
+symbolString x          = throwError $ TypeMismatch "define" "symbol" x
 
 -- | Unpack the integer value of the `LispVal`.
 --

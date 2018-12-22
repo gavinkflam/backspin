@@ -7,6 +7,7 @@ module Env
       -- * Write
     , setVar
     , defineVar
+    , bindVars
     ) where
 
 import Control.Monad.Except (liftIO, throwError)
@@ -51,3 +52,15 @@ defineVar envRef name val = do
             env    <- readIORef envRef
             writeIORef envRef ((name, valRef) : env)
             return val
+
+-- | Add multiple bindings at once.
+bindVars :: LispEnv -> [(String, LispVal)] -> IO LispEnv
+bindVars envRef bindings =
+    newIORef =<< extendEnv bindings =<< readIORef envRef
+  where
+    extendEnv vs env        = (++ env) <$> mapM addBinding vs
+    addBinding (var, value) = (var <#>) <$> newIORef value
+
+-- | Infix operator for constructing pair.
+(<#>) :: a -> b -> (a, b)
+(<#>) x y = (x, y)
