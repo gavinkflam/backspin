@@ -4,6 +4,8 @@ module Eval
     (
       -- * Evaluate
       eval
+      -- * Bindings
+    , primitiveBindings
     ) where
 
 import Control.Monad (zipWithM)
@@ -11,7 +13,7 @@ import Control.Monad.Except (MonadError, liftEither, liftIO, throwError)
 import Data.Array (elems)
 import Data.Maybe (isNothing)
 
-import Env (bindVars, defineVar, getVar, setVar)
+import Env (bindVars, defineVar, getVar, newLispEnv, setVar)
 import Error (IOThrowsError)
 import Type (LispEnv, LispError(..), LispVal(..), ThrowsError)
 
@@ -52,6 +54,13 @@ eval env (List (sym@(Symbol _) : args)) = do
     apply func args'
 -- Bad forms.
 eval _ x = throwError $ BadSpecialForm "Unrecognized special form" x
+
+-- | Make initial bindings for primitives.
+primitiveBindings :: IO LispEnv
+primitiveBindings =
+    (`bindVars` map (makePfuncVar . fst) primitives) =<< newLispEnv
+  where
+    makePfuncVar name = (name, PrimitiveFunc name)
 
 -- | Apply function by name and arguments.
 apply :: LispVal -> [LispVal] -> IOThrowsError LispVal

@@ -7,16 +7,16 @@ module Repl
 import System.IO (getLine, hFlush, putStr, putStrLn, stdout)
 import Control.Monad.Except (liftEither)
 
-import Env (newLispEnv)
 import Error (runIOThrows)
-import Eval (eval)
+import Eval (eval, primitiveBindings)
 import Parser (readExpr)
 import Type (LispEnv)
 
 -- | Run repl session that exit with the command `:quit`.
 runRepl :: IO ()
 runRepl =
-    until_ (== ":quit") (readPrompt "Backspin>>> ") . evalAndPrint =<< newLispEnv
+    until_ (== ":quit") (readPrompt "Backspin>>> ") . evalAndPrint
+      =<< primitiveBindings
 
 -- | Print the prompt message and get input from user.
 readPrompt :: String -> IO String
