@@ -29,12 +29,7 @@ data LispVal
     | DottedList [LispVal] LispVal
     | Vector (Array Int LispVal)
     | PrimitiveFunc String
-    | Func
-        { params  :: [String]
-        , vararg  :: Maybe String
-        , body    :: [LispVal]
-        , closure :: LispEnv
-        }
+    | Func [String] (Maybe String) [LispVal] LispEnv
     deriving (Eq)
 
 instance Show LispVal where
@@ -55,10 +50,10 @@ showVal (List xs)         = "(" ++ unwordsList xs ++ ")"
 showVal (DottedList xs t) = "(" ++ unwordsList xs ++ " . " ++ showVal t ++ ")"
 showVal (Vector xs)       = "#(" ++ unwordsList (elems xs) ++ ")"
 showVal (PrimitiveFunc n) = "<primitive " ++ n ++ ">"
-showVal fn@Func{}         =
-    "(lambda (" ++ varargText ++ unwords (map show $ params fn) ++ ") ...)"
+showVal (Func pns vn _ _) =
+    "(lambda (" ++ varargText ++ unwords (map show pns) ++ ") ...)"
   where
-    varargText = maybe "" (" . " ++) (vararg fn)
+    varargText = maybe "" (" . " ++) vn
 
 -- | Errors for evaluating or parsing lisp.
 data LispError
