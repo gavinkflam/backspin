@@ -10,7 +10,7 @@ import Control.Monad (zipWithM)
 import Control.Monad.Except (MonadError, liftEither, throwError)
 import Data.Array (elems)
 
-import LispEnv (LispEnv)
+import LispEnv (LispEnv, defineVar, getVar, setVar)
 import LispVal (LispVal(..))
 import LispError (IOThrowsError, LispError(..), ThrowsError)
 
@@ -28,6 +28,12 @@ eval _ (List [Symbol "quote", x])      = return x
 eval env (List (Symbol "if" : args))   = tenaryOp "if" (if' env) args
 eval env (List (Symbol "cond" : args)) = cond env args
 eval env (List (Symbol "case" : args)) = case' env args
+-- Bindings.
+eval env (Symbol name)                 = getVar env name
+eval env (List [Symbol "set!", Symbol name, form]) =
+    setVar env name =<< eval env form
+eval env (List [Symbol "define", Symbol name, form]) =
+    defineVar env name =<< eval env form
 -- Primitives.
 eval env (List (Symbol name : args))   =
     liftEither . apply name =<< mapM (eval env) args
