@@ -1,11 +1,8 @@
-module LispEnv
+module Env
     (
-      -- * Types
-      LispEnv
       -- * Initialization
-    , newLispEnv
+      newLispEnv
       -- * Read
-    , isBound
     , getVar
       -- * Write
     , setVar
@@ -13,14 +10,11 @@ module LispEnv
     ) where
 
 import Control.Monad.Except (liftIO, throwError)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.Maybe (isJust)
 
-import LispError (IOThrowsError, LispError(..))
-import LispVal (LispVal)
-
--- | Environment of mutable `LispVal` bindings.
-type LispEnv = IORef [(String, IORef LispVal)]
+import Error (IOThrowsError)
+import Type (LispEnv, LispError(..), LispVal)
 
 -- | Build a new empty LispEnv.
 newLispEnv :: IO LispEnv

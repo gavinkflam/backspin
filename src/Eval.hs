@@ -10,9 +10,9 @@ import Control.Monad (zipWithM)
 import Control.Monad.Except (MonadError, liftEither, throwError)
 import Data.Array (elems)
 
-import LispEnv (LispEnv, defineVar, getVar, setVar)
-import LispVal (LispVal(..))
-import LispError (IOThrowsError, LispError(..), ThrowsError)
+import Env (defineVar, getVar, setVar)
+import Error (IOThrowsError)
+import Type (LispEnv, LispError(..), LispVal(..), ThrowsError)
 
 -- | Evaluate `LispVal` recursively.
 eval :: LispEnv -> LispVal -> IOThrowsError LispVal

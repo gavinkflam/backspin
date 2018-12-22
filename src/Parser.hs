@@ -13,8 +13,7 @@ import Numeric (readFloat, readHex, readInt, readOct)
 import Control.Monad.Except (throwError)
 import Text.ParserCombinators.Parsec
 
-import LispVal (LispVal(..))
-import LispError (LispError(..), ThrowsError)
+import Type (LispError(..), LispVal(..), ThrowsError)
 
 -- | Read an expression. Returns the parsed `LispVal`.
 readExpr :: String -> ThrowsError LispVal
